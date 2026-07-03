@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
+<title>simpleHPC — 数据目录</title>
+<link rel="stylesheet" href="css/theme.css?v=20260703profile">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-icon">S</div><span class="brand-name">simpleHPC</span></div>
+    <ul class="nav">
+      <li class="nav-group-toggle" data-submenu="overview">概览</li><li class="nav-submenu" id="submenu-overview">
+        <a class="nav-submenu-item" href="index.html">仪表盘</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="users">账户管理</li><li class="nav-submenu" id="submenu-users">
+        <a class="nav-submenu-item" href="units.html">单位管理</a>
+        <a class="nav-submenu-item" href="teams.html">团队管理</a>
+        <a class="nav-submenu-item" href="users.html">用户管理</a>
+        <a class="nav-submenu-item" href="admins.html">管理员账号管理</a>
+        <a class="nav-submenu-item" href="roles.html">角色管理</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="compute">计算管理</li><li class="nav-submenu" id="submenu-compute">
+        <a class="nav-submenu-item" href="partitions.html">资源队列配置</a>
+        <a class="nav-submenu-item" href="queue-status.html">队列状态</a>
+        <a class="nav-submenu-item" href="nodes.html">节点状态</a>
+        <a class="nav-submenu-item" href="qos.html">QOS 策略</a>
+      </li>
+      <li class="nav-group-toggle expanded" data-submenu="data">数据管理</li><li class="nav-submenu expanded" id="submenu-data">
+        <a class="nav-submenu-item active" href="data.html">数据目录</a>
+        <a class="nav-submenu-item" href="data-acl.html">访问授权</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="jobs">作业中心</li><li class="nav-submenu" id="submenu-jobs">
+        <a class="nav-submenu-item" href="job-templates.html">作业模板</a>
+        <a class="nav-submenu-item" href="job-list.html">作业列表</a>
+        <a class="nav-submenu-item" href="vnc-desktop.html">VNC 桌面</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="ops">监控运维</li><li class="nav-submenu" id="submenu-ops">
+        <a class="nav-submenu-item" href="monitoring.html">监控告警</a>
+        <a class="nav-submenu-item" href="inspection.html">巡检报告</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="system">系统</li><li class="nav-submenu" id="submenu-system">
+        <a class="nav-submenu-item" href="settings.html">平台设置</a>
+        <a class="nav-submenu-item" href="ldap.html">LDAP 配置</a>
+        <a class="nav-submenu-item" href="slurm.html">Slurm 配置</a>
+        <a class="nav-submenu-item" href="storage.html">存储配置</a>
+        <a class="nav-submenu-item" href="notify.html">通知配置</a>
+        <a class="nav-submenu-item" href="audit.html">审计日志</a>
+      </li>
+    </ul>
+    <div class="sidebar-user"><div class="avatar">管</div><div><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">管理员</div><div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">cluster-admin</div></div></div>
+  </aside>
+  <header class="header">
+    <h1 class="header-title">数据目录</h1>
+    <div class="header-actions">
+      <input class="search-field" placeholder="搜索..." id="globalSearch">
+      <button class="btn-icon" aria-label="通知" data-dropdown='{"html":"<div class="_shpc-dropdown-item">通知消息</div><div class="_shpc-dropdown-item"><span style="color:var(--success)">●</span> 系统运行正常</div>","width":"240px","placement":"bottom-end"}'>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </button>
+      <div class="avatar" style="cursor:pointer;" data-dropdown='{"html":"&lt;a class=&quot;_shpc-dropdown-item&quot; href=&quot;users.html&quot;&gt;个人资料&lt;/a&gt;&lt;button type=&quot;button&quot; class=&quot;_shpc-dropdown-item&quot; style=&quot;width:100%;border:0;background:transparent;text-align:left;font:inherit&quot; onclick=&quot;App.openPasswordDrawer()&quot;&gt;修改密码&lt;/button&gt;&lt;div class=&quot;_shpc-dropdown-divider&quot;&gt;&lt;/div&gt;&lt;button type=&quot;button&quot; class=&quot;_shpc-dropdown-item&quot; style=&quot;width:100%;border:0;background:transparent;text-align:left;font:inherit;color:var(--danger)&quot; onclick=&quot;App.logout()&quot;&gt;退出登录&lt;/button&gt;","width":"160px","placement":"bottom-end"}'>管</div>
+    </div>
+  </header>
+  <main class="main">
+    <div class="file-manager" style="grid-template-columns:280px minmax(0,1fr);">
+      <aside class="file-pane card">
+        <div class="card-title">存储目录</div>
+        <div class="card-subtitle" id="rootSummary">正在获取存储配置...</div>
+        <div id="storageSources"></div>
+      </aside>
+      <section class="file-pane card">
+        <div class="file-toolbar">
+          <div>
+            <div class="card-title">文件浏览</div>
+            <div class="breadcrumb"><button id="parentButton" type="button" onclick="goParent()" disabled>上一级</button><span>›</span><span id="currentPath">数据未获取</span></div>
+          </div>
+          <div class="file-actions">
+            <input id="uploadInput" type="file" multiple hidden>
+            <button class="btn btn-primary" type="button" data-permission="action.storage.upload" onclick="document.getElementById('uploadInput').click()">上传</button>
+            <button class="btn btn-ghost" type="button" data-permission="action.storage.create_directory" onclick="createDirectory()">新建目录</button>
+            <button class="btn btn-ghost" type="button" data-permission="action.storage.copy" onclick="transferSelected('copy')">复制</button>
+            <button class="btn btn-ghost" type="button" data-permission="action.storage.move" onclick="transferSelected('move')">移动</button>
+            <button class="btn btn-ghost" type="button" data-permission="action.storage.delete" onclick="deleteSelected()">删除</button>
+            <button class="btn btn-ghost" type="button" data-permission="action.storage.archive" onclick="archiveSelected()">打包下载</button>
+            <label class="file-hidden-toggle" data-permission="action.storage.hidden"><input id="showHidden" type="checkbox"> 显示隐藏文件</label>
+          </div>
+        </div>
+        <div class="drop-zone" id="dropZone">拖拽文件到此区域，上传到当前目录</div>
+        <div class="table-wrap" style="margin-top:12px;">
+          <table class="file-table" id="fileTable">
+            <thead><tr><th style="width:44px"><input id="selectAll" type="checkbox"></th><th>名称</th><th>权限</th><th>UID</th><th>大小</th><th>修改时间</th><th>操作</th></tr></thead>
+            <tbody id="fileRows"><tr><td colspan="7">正在获取目录数据...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+    <div style="height:40px;"></div>
+  </main>
+</div>
+<script>
+var storageRoots=[];
+var currentPath='';
+var currentRoot='';
+var currentEntries=[];
+var currentParentPath='';
+function h(value){return String(value==null?'':value).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]});}
+function apiError(data,res){return new Error((data&&data.error)||res.statusText||'请求失败');}
+function formatBytes(size){var n=Number(size)||0;if(n<1024)return n+' B';var u=['KB','MB','GB','TB'];var i=-1;do{n/=1024;i++;}while(n>=1024&&i<u.length-1);return n.toFixed(n>=10?1:2)+' '+u[i];}
+function formatMode(mode){return String(mode||'').replace(/^[d-]/,'');}
+function rootUsage(root){return Number.isFinite(Number(root.usagePercent))?Number(root.usagePercent):null;}
+async function loadRoots(){
+  try{
+    var res=await fetch('/api/v1/storage/roots',{cache:'no-store'});var data=await res.json();if(!res.ok)throw apiError(data,res);
+    storageRoots=data.items||[];document.getElementById('rootSummary').textContent='已对接 '+storageRoots.length+' 个存储路径';
+    document.getElementById('storageSources').innerHTML=storageRoots.map(function(root,index){var usage=rootUsage(root);return '<button class="storage-source '+(index===0?'active':'')+'" type="button" data-index="'+index+'"><strong>'+h(root.name)+' <code>'+h(root.path)+'</code></strong><span>'+h(root.fsType)+' · '+(usage===null?'用量数据未获取':usage.toFixed(1)+'%')+' · '+h(root.purpose)+'</span><div class="metric-bar"><div class="metric-bar-fill '+(usage>=85?'danger':usage>=75?'warn':'')+'" style="width:'+(usage===null?0:Math.min(100,usage))+'%"></div></div></button>'}).join('');
+    document.querySelectorAll('.storage-source').forEach(function(button){button.addEventListener('click',function(){selectRoot(Number(this.dataset.index));});});
+    if(storageRoots.length)selectRoot(0);else showRowsError('存储配置未返回任何路径');
+  }catch(err){document.getElementById('rootSummary').textContent='数据未获取';showRowsError(err.message);}
+}
+function selectRoot(index){
+  document.querySelectorAll('.storage-source').forEach(function(x){x.classList.toggle('active',Number(x.dataset.index)===index);});
+  currentRoot=storageRoots[index].effectivePath||storageRoots[index].path;loadDirectory(currentRoot);
+}
+async function loadDirectory(path){
+  try{
+    var show=document.getElementById('showHidden').checked;
+    var res=await fetch('/api/v1/storage/list?path='+encodeURIComponent(path)+'&showHidden='+show,{cache:'no-store'});var data=await res.json();if(!res.ok)throw apiError(data,res);
+    currentPath=data.effectivePath||path;currentRoot=data.initialPath||currentRoot;currentParentPath=data.parentPath||'';currentEntries=data.items||[];document.getElementById('currentPath').textContent=currentPath;document.getElementById('parentButton').disabled=!data.canGoParent;renderEntries();
+  }catch(err){showRowsError(err.message);}
+}
+function renderEntries(){
+  var rows=document.getElementById('fileRows');document.getElementById('selectAll').checked=false;
+  if(!currentEntries.length){rows.innerHTML='<tr><td colspan="7"><div class="empty-state">当前目录为空</div></td></tr>';return;}
+  rows.innerHTML=currentEntries.map(function(item,index){var dir=item.type==='directory';return '<tr data-index="'+index+'"><td><input class="entry-check" type="checkbox" value="'+h(item.path)+'"></td><td><button class="file-name file-link" type="button" onclick="'+(dir?'loadDirectory(currentEntries['+index+'].path)':'downloadEntry('+index+')')+'"><span class="file-icon '+(dir?'folder':'')+'">'+(dir?'DIR':'FILE')+'</span><span>'+h(item.name)+'</span></button></td><td><code>'+h(formatMode(item.mode))+'</code></td><td>'+h(item.owner||'数据未获取')+'</td><td>'+(dir?'—':formatBytes(item.size))+'</td><td>'+new Date(item.modTime).toLocaleString('zh-CN',{hour12:false})+'</td><td><button class="small-action" type="button" data-permission="'+(dir?'action.storage.view':'action.storage.download')+'" onclick="'+(dir?'loadDirectory(currentEntries['+index+'].path)':'downloadEntry('+index+')')+'">'+(dir?'打开':'下载')+'</button> <button class="small-action" type="button" data-permission="action.storage.rename" onclick="renameEntry('+index+')">重命名</button> <button class="small-action" type="button" data-permission="action.storage.archive" onclick="archiveOne('+index+')">打包下载</button></td></tr>'}).join('');
+  App.authz&&App.authz.applyButtonPermissions(rows);
+}
+function showRowsError(message){document.getElementById('fileRows').innerHTML='<tr><td colspan="7"><div class="api-data-missing"><strong>数据未获取</strong>：'+h(message)+'</div></td></tr>';}
+function selectedPaths(){return Array.from(document.querySelectorAll('.entry-check:checked')).map(function(x){return x.value;});}
+function requireSelected(){var paths=selectedPaths();if(!paths.length)App.toast('请先勾选文件或目录','warn');return paths;}
+function goParent(){if(!currentParentPath)return;loadDirectory(currentParentPath);}
+async function requestJSON(url,options){var res=await fetch(url,options);var data=await res.json().catch(function(){return {};});if(!res.ok)throw apiError(data,res);return data;}
+function createDirectory(){
+  var popup=App.drawer({title:'新建目录',content:'<div class="_shpc-field"><label>目录名称</label><input id="newDirectoryName" autocomplete="off" placeholder="请输入目录名称"></div>',onSubmit:async function(){try{await requestJSON('/api/v1/storage/directory',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({parent:currentPath,name:document.getElementById('newDirectoryName').value})});App.toast('目录已创建','success');await loadDirectory(currentPath);}catch(err){App.toast(err.message,'danger');}}});return popup;
+}
+async function uploadFiles(files){
+  for(var file of files){var form=new FormData();form.append('path',currentPath);form.append('file',file);var res=await fetch('/api/v1/storage/upload',{method:'POST',body:form});var data=await res.json().catch(function(){return {};});if(!res.ok)throw apiError(data,res);}
+  App.toast('上传完成：'+files.length+' 个文件','success');await loadDirectory(currentPath);
+}
+function transferSelected(action){
+  var paths=requireSelected();if(!paths.length)return;
+  App.drawer({title:action==='copy'?'复制到目录':'移动到目录',content:'<div class="_shpc-field"><label>目标目录绝对路径</label><input id="transferDestination" value="'+h(currentPath)+'"></div>',onSubmit:async function(){try{await requestJSON('/api/v1/storage/'+action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({paths:paths,destination:document.getElementById('transferDestination').value})});App.toast(action==='copy'?'复制完成':'移动完成','success');await loadDirectory(currentPath);}catch(err){App.toast(err.message,'danger');}}});
+}
+function deleteSelected(){
+  var paths=requireSelected();if(!paths.length)return;
+  App.confirm('将永久删除选中的 '+paths.length+' 项，确认继续？',{danger:true,confirmText:'删除',onConfirm:async function(){try{await requestJSON('/api/v1/storage/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({paths:paths})});App.toast('删除完成','success');await loadDirectory(currentPath);}catch(err){App.toast(err.message,'danger');}}});
+}
+function downloadBlob(blob,name){var url=URL.createObjectURL(blob);var link=document.createElement('a');link.href=url;link.download=name;document.body.appendChild(link);link.click();link.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);}
+function downloadEntry(index){var item=currentEntries[index];window.location.href='/api/v1/storage/download?path='+encodeURIComponent(item.path);}
+function renameEntry(index){var item=currentEntries[index];App.modal({title:'重命名',content:'<div class="_shpc-field"><label>新名称</label><input id="renameEntryName" value="'+h(item.name)+'"></div>',onSubmit:async function(){try{await requestJSON('/api/v1/storage/rename',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:item.path,name:document.getElementById('renameEntryName').value})});App.toast('重命名完成','success');await loadDirectory(currentPath);}catch(err){App.toast(err.message,'danger');}}});}
+async function archivePaths(paths){var res=await fetch('/api/v1/storage/archive',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({paths:paths})});if(!res.ok){var data=await res.json().catch(function(){return {};});throw apiError(data,res);}downloadBlob(await res.blob(),'simplehpc-selected.zip');}
+async function archiveSelected(){var paths=requireSelected();if(!paths.length)return;try{await archivePaths(paths);}catch(err){App.toast(err.message,'danger');}}
+async function archiveOne(index){try{await archivePaths([currentEntries[index].path]);}catch(err){App.toast(err.message,'danger');}}
+document.addEventListener('DOMContentLoaded',function(){
+  document.getElementById('showHidden').addEventListener('change',function(){if(currentPath)loadDirectory(currentPath);});
+  document.getElementById('selectAll').addEventListener('change',function(){document.querySelectorAll('.entry-check').forEach(function(x){x.checked=document.getElementById('selectAll').checked;});});
+  document.getElementById('uploadInput').addEventListener('change',function(){if(this.files.length)uploadFiles(this.files).catch(function(err){App.toast(err.message,'danger');});this.value='';});
+  var zone=document.getElementById('dropZone');['dragenter','dragover'].forEach(function(name){zone.addEventListener(name,function(event){event.preventDefault();zone.classList.add('active');});});['dragleave','drop'].forEach(function(name){zone.addEventListener(name,function(event){event.preventDefault();zone.classList.remove('active');});});zone.addEventListener('drop',function(event){if(event.dataTransfer.files.length)uploadFiles(event.dataTransfer.files).catch(function(err){App.toast(err.message,'danger');});});
+  loadRoots();
+});
+</script>
+<script src="js/app.js?v=20260703profile"></script>
+</body>
+</html>

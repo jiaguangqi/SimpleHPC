@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:,">
+  <title>simpleHPC - 资源队列配置</title>
+  <link rel="stylesheet" href="css/theme.css?v=20260703profile">
+  <style>
+    .partition-page{display:flex;flex-direction:column;gap:18px}
+    .partition-notice{display:grid;grid-template-columns:22px 1fr;gap:12px;padding:16px 18px;border:1px solid #bfdbfe;background:#eff6ff;color:#334155;border-radius:7px;font-size:13px;line-height:1.7}
+    .partition-notice strong{color:#1d4ed8}
+    .partition-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .partition-toolbar-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .partition-source{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:7px}
+    .source-dot{width:7px;height:7px;border-radius:50%;background:var(--success)}
+    .partition-card{padding:0;overflow:hidden}
+    .partition-table{width:100%;min-width:1380px;table-layout:fixed}
+    .partition-table th,.partition-table td{padding:14px 13px;vertical-align:middle}
+    .partition-table th{font-size:11px;text-transform:uppercase;color:#64748b;letter-spacing:.04em;white-space:nowrap}
+    .partition-table td{font-size:13px}
+    .partition-table .clip{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .partition-name{font-family:var(--font-mono);font-weight:700;color:#172033}
+    .partition-actions{display:flex;gap:6px;white-space:nowrap}
+    .partition-actions button{font-size:12px}
+    .partition-empty{padding:48px 16px!important;text-align:center;color:var(--muted)}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px 18px}
+    .form-field{display:flex;flex-direction:column;gap:7px}
+    .form-field.full{grid-column:1/-1}
+    .form-field label{font-size:12px;font-weight:600;color:#475569}
+    .form-field label.required:before{content:"* ";color:var(--danger)}
+    .form-field input,.form-field select,.description-input{width:100%;border:1px solid var(--border);border-radius:6px;padding:10px 11px;background:var(--surface);color:var(--fg);font:inherit}
+    .form-field input:focus,.form-field select:focus,.description-input:focus{outline:2px solid rgba(5,150,105,.16);border-color:var(--accent)}
+    .form-hint{font-size:11px;color:var(--muted);line-height:1.5}
+    .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+    .publish-note{margin-top:14px;padding:11px 12px;background:#f8fafc;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:12px;line-height:1.6}
+    .description-input{min-height:260px;resize:vertical;line-height:1.7}
+    .loading-row td{padding:50px!important;text-align:center;color:var(--muted)}
+    @media(max-width:1100px){.form-grid{grid-template-columns:1fr}}
+    @media(max-width:680px){.partition-toolbar{align-items:flex-start;flex-direction:column}.partition-toolbar-actions{width:100%}.partition-toolbar-actions .btn{flex:1}}
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-icon">S</div><span class="brand-name">simpleHPC</span></div>
+    <ul class="nav">
+      <li class="nav-group-toggle" data-submenu="overview">概览</li><li class="nav-submenu" id="submenu-overview"><a class="nav-submenu-item" href="index.html">仪表盘</a></li>
+      <li class="nav-group-toggle" data-submenu="users">账户管理</li><li class="nav-submenu" id="submenu-users">
+        <a class="nav-submenu-item" href="units.html">单位管理</a><a class="nav-submenu-item" href="teams.html">团队管理</a><a class="nav-submenu-item" href="users.html">用户管理</a><a class="nav-submenu-item" href="admins.html">管理员账号管理</a><a class="nav-submenu-item" href="roles.html">角色管理</a>
+      </li>
+      <li class="nav-group-toggle expanded" data-submenu="compute">计算管理</li><li class="nav-submenu expanded" id="submenu-compute">
+        <a class="nav-submenu-item active" href="partitions.html">资源队列配置</a><a class="nav-submenu-item" href="queue-status.html">队列状态</a><a class="nav-submenu-item" href="nodes.html">节点状态</a><a class="nav-submenu-item" href="qos.html">QOS 策略</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="data">数据管理</li><li class="nav-submenu" id="submenu-data"><a class="nav-submenu-item" href="data.html">数据目录</a><a class="nav-submenu-item" href="data-acl.html">访问授权</a></li>
+      <li class="nav-group-toggle" data-submenu="jobs">作业中心</li><li class="nav-submenu" id="submenu-jobs"><a class="nav-submenu-item" href="job-templates.html">作业模板</a><a class="nav-submenu-item" href="job-list.html">作业列表</a><a class="nav-submenu-item" href="vnc-desktop.html">VNC 桌面</a></li>
+      <li class="nav-group-toggle" data-submenu="ops">监控运维</li><li class="nav-submenu" id="submenu-ops"><a class="nav-submenu-item" href="monitoring.html">监控告警</a><a class="nav-submenu-item" href="inspection.html">巡检报告</a></li>
+      <li class="nav-group-toggle" data-submenu="system">系统</li><li class="nav-submenu" id="submenu-system"><a class="nav-submenu-item" href="settings.html">平台设置</a><a class="nav-submenu-item" href="ldap.html">LDAP 配置</a><a class="nav-submenu-item" href="slurm.html">Slurm 配置</a><a class="nav-submenu-item" href="storage.html">存储配置</a><a class="nav-submenu-item" href="notify.html">通知配置</a><a class="nav-submenu-item" href="audit.html">审计日志</a></li>
+    </ul>
+    <div class="sidebar-user"><div class="avatar">管</div><div><div style="font-size:13px;font-weight:600">管理员</div><div style="font-size:11px;color:var(--muted)">cluster-admin</div></div></div>
+  </aside>
+  <header class="header"><h1 class="header-title">资源队列配置</h1>
+    <div class="header-actions"><input class="search-field" placeholder="搜索分区..." id="globalSearch"><button class="btn-icon" aria-label="通知">⌁</button><div class="avatar" style="cursor:pointer;" aria-label="用户菜单">管</div></div>
+  </header>
+  <main class="main">
+    <div class="partition-page">
+      <div class="partition-notice">
+        <strong>i</strong>
+        <div>
+          <div>1. 页面实时读取 Slurm 当前生效的分区配置，加载时间取决于集群响应速度。</div>
+          <div>2. 修改或删除分区可能影响正在运行和排队的作业，请先确认业务窗口。</div>
+          <div>3. 保存后将备份 <code>slurm.conf</code>、写入配置并执行集群重载；失败时自动恢复原配置。</div>
+        </div>
+      </div>
+
+      <div class="partition-toolbar">
+        <div class="partition-toolbar-actions">
+          <button class="btn btn-primary" id="createPartition">新建队列</button>
+          <button class="btn btn-ghost" id="editDescription">队列说明</button>
+          <button class="btn btn-ghost" id="refreshPartitions">刷新配置</button>
+        </div>
+        <div class="partition-source"><span class="source-dot"></span><span id="sourceStatus">正在读取 Slurm 生效配置</span></div>
+      </div>
+
+      <section class="card partition-card">
+        <div class="table-wrap">
+          <table class="partition-table" id="partitionConfigTable">
+            <colgroup>
+              <col style="width:12%"><col style="width:12%"><col style="width:9%"><col style="width:8%">
+              <col style="width:11%"><col style="width:11%"><col style="width:10%"><col style="width:7%">
+              <col style="width:7%"><col style="width:6%"><col style="width:7%">
+            </colgroup>
+            <thead><tr>
+              <th>PartitionName</th><th>Nodes</th><th>MaxTime</th><th>MaxCPUs/Node</th>
+              <th>AllowGroups</th><th>AllowAccounts</th><th>AllowQos</th><th>Default</th>
+              <th>State</th><th>QOS</th><th>操作</th>
+            </tr></thead>
+            <tbody><tr class="loading-row"><td colspan="11">正在获取 Slurm 分区配置...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+<script src="js/app.js?v=20260703profile"></script>
+<script>
+(() => {
+  const state = { items: [], description: '' };
+  const tbody = document.querySelector('#partitionConfigTable tbody');
+  const sourceStatus = document.getElementById('sourceStatus');
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  const value = (item, key, fallback = 'ALL') => item[key] || fallback;
+  const actionButton = (label, action, name, danger = false) => `<button class="btn btn-ghost partition-action" data-action="${action}" data-name="${esc(name)}" style="padding:5px 8px;${danger ? 'color:var(--danger)' : ''}">${label}</button>`;
+
+  function render() {
+    const keyword = document.getElementById('globalSearch').value.trim().toLowerCase();
+    const items = state.items.filter(item => JSON.stringify(item).toLowerCase().includes(keyword));
+    tbody.innerHTML = items.map(item => `<tr>
+      <td><span class="clip partition-name" title="${esc(item.name)}">${esc(item.name)}</span></td>
+      <td><span class="clip" title="${esc(item.nodes)}">${esc(item.nodes || '数据未获取')}</span></td>
+      <td>${esc(item.maxTime || 'UNLIMITED')}</td>
+      <td>${esc(item.maxCPUsPerNode || 'UNLIMITED')}</td>
+      <td><span class="clip" title="${esc(value(item,'allowGroups'))}">${esc(value(item,'allowGroups'))}</span></td>
+      <td><span class="clip" title="${esc(value(item,'allowAccounts'))}">${esc(value(item,'allowAccounts'))}</span></td>
+      <td><span class="clip" title="${esc(value(item,'allowQos'))}">${esc(value(item,'allowQos'))}</span></td>
+      <td>${item.default === 'YES' ? '<span class="pill pill-info">YES</span>' : 'NO'}</td>
+      <td><span class="pill ${item.state === 'UP' ? 'pill-success' : 'pill-warn'}">${esc(item.state)}</span></td>
+      <td>${esc(item.qos || '-')}</td>
+      <td><div class="partition-actions">${actionButton('编辑','edit',item.name)}${actionButton('删除','delete',item.name,true)}</div></td>
+    </tr>`).join('') || `<tr><td colspan="11" class="partition-empty">${keyword ? '没有匹配的分区' : 'Slurm 当前没有返回分区配置'}</td></tr>`;
+  }
+
+  async function request(url, options = {}) {
+    const response = await App.apiFetch(url, { cache: 'no-store', headers: {'Content-Type':'application/json'}, ...options });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    return data;
+  }
+
+  async function load() {
+    sourceStatus.textContent = '正在读取 Slurm 生效配置';
+    tbody.innerHTML = '<tr class="loading-row"><td colspan="11">正在获取 Slurm 分区配置...</td></tr>';
+    try {
+      const data = await request('/api/v1/slurm/partition-configs');
+      state.items = data.items || [];
+      sourceStatus.textContent = `来自 Slurm 当前生效配置 · ${state.items.length} 个分区`;
+      render();
+    } catch (error) {
+      sourceStatus.textContent = 'Slurm 配置读取失败';
+      tbody.innerHTML = `<tr><td colspan="11" class="partition-empty">数据未获取：${esc(error.message)}</td></tr>`;
+      App.toast(`配置读取失败：${error.message}`, 'error');
+    }
+  }
+
+  function formContent(item, editing) {
+    const field = (key, label, opts = {}) => {
+      const current = item[key] || opts.defaultValue || '';
+      if (opts.select) return `<div class="form-field"><label class="${opts.required?'required':''}">${label}</label><select id="pf-${key}">${opts.select.map(v => `<option ${v===current?'selected':''}>${v}</option>`).join('')}</select></div>`;
+      return `<div class="form-field ${opts.full?'full':''}"><label class="${opts.required?'required':''}">${label}</label><input id="pf-${key}" value="${esc(current)}" ${editing && key === 'name' ? 'readonly' : ''} placeholder="${esc(opts.placeholder || '')}">${opts.hint?`<div class="form-hint">${opts.hint}</div>`:''}</div>`;
+    };
+    return `<div class="form-grid">
+      ${field('name','PartitionName',{required:true,placeholder:'例如 cpu-normal'})}
+      ${field('nodes','Nodes',{required:true,placeholder:'例如 node-[001-032]'})}
+      ${field('maxTime','MaxTime',{defaultValue:'UNLIMITED',placeholder:'UNLIMITED 或 24:00:00'})}
+      ${field('maxCPUsPerNode','MaxCPUsPerNode',{defaultValue:'UNLIMITED'})}
+      ${field('allowGroups','AllowGroups',{defaultValue:'ALL',full:true,hint:'多个组使用英文逗号分隔；ALL 表示不限制。'})}
+      ${field('allowAccounts','AllowAccounts',{defaultValue:'ALL'})}
+      ${field('allowQos','AllowQos',{defaultValue:'ALL'})}
+      ${field('default','Default',{select:['NO','YES'],defaultValue:'NO'})}
+      ${field('state','State',{select:['UP','DOWN','INACTIVE','DRAIN'],defaultValue:'UP'})}
+      ${field('qos','QOS',{placeholder:'可选，例如 normal'})}
+    </div>
+    <div class="publish-note">保存流程：备份配置 → 写入 <code>slurm.conf</code> → <code>scontrol reconfigure</code> → Slurm RPC 通知已注册节点重载。配置校验失败会自动回滚。</div>
+    <div class="modal-actions"><button class="btn btn-ghost" id="partitionCancel">取消</button><button class="btn btn-primary" id="partitionSave">${editing?'保存并同步':'创建并同步'}</button></div>`;
+  }
+
+  function collectForm() {
+    const get = key => document.getElementById(`pf-${key}`).value.trim();
+    return {name:get('name'),nodes:get('nodes'),maxTime:get('maxTime'),maxCPUsPerNode:get('maxCPUsPerNode'),allowGroups:get('allowGroups'),allowAccounts:get('allowAccounts'),allowQos:get('allowQos'),default:get('default'),state:get('state'),qos:get('qos')};
+  }
+
+  function openEditor(item = null) {
+    const editing = Boolean(item);
+    const modal = App.modal({title:editing ? `编辑队列 · ${item.name}` : '新建队列',content:formContent(item || {}, editing),width:'820px',showFooter:false});
+    modal.el.querySelector('#partitionCancel').onclick = modal.close;
+    modal.el.querySelector('#partitionSave').onclick = async event => {
+      const button = event.currentTarget;
+      button.disabled = true; button.textContent = '正在发布配置...';
+      try {
+        const payload = collectForm();
+        const url = editing ? `/api/v1/slurm/partition-configs/${encodeURIComponent(item.name)}` : '/api/v1/slurm/partition-configs';
+        const result = await request(url, {method:editing?'PUT':'POST',body:JSON.stringify(payload)});
+        modal.close();
+        const count = result.publish?.nodes?.length ?? 0;
+        App.toast(`配置已生效，已通知 ${count} 个 Slurm 节点重载`, 'success');
+        await load();
+      } catch (error) {
+        button.disabled = false; button.textContent = editing?'保存并同步':'创建并同步';
+        App.toast(`发布失败：${error.message}`, 'error');
+      }
+    };
+  }
+
+  function deletePartition(name) {
+    const item = state.items.find(entry => entry.name === name);
+    const defaultWarning = item?.default === 'YES' ? '<br><strong style="color:var(--danger)">该分区是默认分区，删除前必须先设置新的默认分区。</strong>' : '';
+    App.confirm(`确定删除分区 <strong>${esc(name)}</strong>？删除会影响该分区上的运行与排队作业。${defaultWarning}`, {
+      danger:true,
+      confirmText:'确认删除',
+      onConfirm: async () => {
+        try {
+          const result = await request(`/api/v1/slurm/partition-configs/${encodeURIComponent(name)}`, {method:'DELETE'});
+          App.toast(`分区已删除，已通知 ${result.publish?.nodes?.length ?? 0} 个节点重载`, 'success');
+          await load();
+        } catch (error) { App.toast(`删除失败：${error.message}`, 'error'); }
+      }
+    });
+  }
+
+  async function openDescription() {
+    try {
+      const data = await request('/api/v1/slurm/partition-description');
+      state.description = data.description || '';
+    } catch (_) {}
+    const content = `<textarea class="description-input" id="partitionDescription" placeholder="填写队列用途、适用用户、资源规格和使用约束。">${esc(state.description)}</textarea><div class="modal-actions"><button class="btn btn-ghost" id="descriptionCancel">取消</button><button class="btn btn-primary" id="descriptionSave">保存说明</button></div>`;
+    const modal = App.modal({title:'队列说明',content,width:'840px',showFooter:false});
+    modal.el.querySelector('#descriptionCancel').onclick = modal.close;
+    modal.el.querySelector('#descriptionSave').onclick = async () => {
+      try {
+        const description = modal.el.querySelector('#partitionDescription').value;
+        await request('/api/v1/slurm/partition-description',{method:'PUT',body:JSON.stringify({description})});
+        state.description = description; modal.close(); App.toast('队列说明已保存','success');
+      } catch (error) { App.toast(`保存失败：${error.message}`,'error'); }
+    };
+  }
+
+  document.getElementById('createPartition').onclick = () => openEditor();
+  document.getElementById('editDescription').onclick = openDescription;
+  document.getElementById('refreshPartitions').onclick = load;
+  document.getElementById('globalSearch').addEventListener('input', render);
+  tbody.addEventListener('click', event => {
+    const button = event.target.closest('.partition-action');
+    if (!button) return;
+    if (button.dataset.action === 'edit') openEditor(state.items.find(item => item.name === button.dataset.name));
+    if (button.dataset.action === 'delete') deletePartition(button.dataset.name);
+  });
+  load();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
+<title>simpleHPC — 通知配置</title>
+<link rel="stylesheet" href="css/theme.css?v=20260703profile">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-icon">S</div><span class="brand-name">simpleHPC</span></div>
+    <ul class="nav">
+      <li class="nav-group-toggle" data-submenu="overview">概览</li><li class="nav-submenu" id="submenu-overview">
+        <a class="nav-submenu-item" href="index.html">仪表盘</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="users">账户管理</li><li class="nav-submenu" id="submenu-users">
+        <a class="nav-submenu-item" href="units.html">单位管理</a>
+        <a class="nav-submenu-item" href="teams.html">团队管理</a>
+        <a class="nav-submenu-item" href="users.html">用户管理</a>
+        <a class="nav-submenu-item" href="admins.html">管理员账号管理</a>
+        <a class="nav-submenu-item" href="roles.html">角色管理</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="compute">计算管理</li><li class="nav-submenu" id="submenu-compute">
+        <a class="nav-submenu-item" href="partitions.html">资源队列配置</a>
+        <a class="nav-submenu-item" href="queue-status.html">队列状态</a>
+        <a class="nav-submenu-item" href="nodes.html">节点状态</a>
+        <a class="nav-submenu-item" href="qos.html">QOS 策略</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="data">数据管理</li><li class="nav-submenu" id="submenu-data">
+        <a class="nav-submenu-item" href="data.html">数据目录</a>
+        <a class="nav-submenu-item" href="data-acl.html">访问授权</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="jobs">作业中心</li><li class="nav-submenu" id="submenu-jobs">
+        <a class="nav-submenu-item" href="job-templates.html">作业模板</a>
+        <a class="nav-submenu-item" href="job-list.html">作业列表</a>
+        <a class="nav-submenu-item" href="vnc-desktop.html">VNC 桌面</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="ops">监控运维</li><li class="nav-submenu" id="submenu-ops">
+        <a class="nav-submenu-item" href="monitoring.html">监控告警</a>
+        <a class="nav-submenu-item" href="inspection.html">巡检报告</a>
+      </li>
+      <li class="nav-group-toggle expanded" data-submenu="system">系统</li><li class="nav-submenu expanded" id="submenu-system">
+        <a class="nav-submenu-item" href="settings.html">平台设置</a>
+        <a class="nav-submenu-item" href="ldap.html">LDAP 配置</a>
+        <a class="nav-submenu-item" href="slurm.html">Slurm 配置</a>
+        <a class="nav-submenu-item" href="storage.html">存储配置</a>
+        <a class="nav-submenu-item active" href="notify.html">通知配置</a>
+        <a class="nav-submenu-item" href="audit.html">审计日志</a>
+      </li>
+    </ul>
+    <div class="sidebar-user"><div class="avatar">管</div><div><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">管理员</div><div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">cluster-admin</div></div></div>
+  </aside>
+  <header class="header">
+    <h1 class="header-title">通知配置</h1>
+    <div class="header-actions">
+      <input class="search-field" placeholder="搜索..." id="globalSearch">
+      <button class="btn-icon" aria-label="通知" data-dropdown='{"html":"<div class=\"_shpc-dropdown-item\">通知消息</div><div class=\"_shpc-dropdown-item\"><span style=\"color:var(--success)\">●</span> 系统运行正常</div>","width":"240px","placement":"bottom-end"}'>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </button>
+      <div class="avatar" style="cursor:pointer;" data-dropdown='{"html":"&lt;a class=&quot;_shpc-dropdown-item&quot; href=&quot;users.html&quot;&gt;个人资料&lt;/a&gt;&lt;button type=&quot;button&quot; class=&quot;_shpc-dropdown-item&quot; style=&quot;width:100%;border:0;background:transparent;text-align:left;font:inherit&quot; onclick=&quot;App.openPasswordDrawer()&quot;&gt;修改密码&lt;/button&gt;&lt;div class=&quot;_shpc-dropdown-divider&quot;&gt;&lt;/div&gt;&lt;button type=&quot;button&quot; class=&quot;_shpc-dropdown-item&quot; style=&quot;width:100%;border:0;background:transparent;text-align:left;font:inherit;color:var(--danger)&quot; onclick=&quot;App.logout()&quot;&gt;退出登录&lt;/button&gt;","width":"160px","placement":"bottom-end"}'>管</div>
+    </div>
+  </header>
+  <main class="main">
+<div class="notify-config-grid">
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">邮箱配置</div>
+        <div class="card-subtitle">配置系统内置发信邮箱，用于账号开通、密码重置、冻结解冻和巡检报告邮件通知。</div>
+      </div>
+      <span class="pill pill-info">系统发信账号</span>
+    </div>
+    <div class="notify-form-grid">
+      <div class="_shpc-field">
+        <label>邮箱账号</label>
+        <input id="emailAccount" value="hpcadmin@163.com" autocomplete="off">
+      </div>
+      <div class="_shpc-field">
+        <label>邮箱密码 / 授权码</label>
+        <input id="emailPassword" type="password" placeholder="请输入邮箱密码或客户端授权码" autocomplete="new-password">
+      </div>
+      <div class="_shpc-field">
+        <label>POP3 服务器</label>
+        <input id="emailPOP3" value="pop.163.com" autocomplete="off">
+      </div>
+      <div class="_shpc-field">
+        <label>SMTP 服务器</label>
+        <input id="emailSMTP" value="smtp.163.com" autocomplete="off">
+      </div>
+      <div class="_shpc-field">
+        <label>IMAP 服务器</label>
+        <input id="emailIMAP" value="imap.163.com" autocomplete="off">
+      </div>
+      <div class="_shpc-field">
+        <label>SMTP 端口</label>
+        <select id="emailPort">
+          <option>465 SSL</option>
+          <option>994 SSL</option>
+          <option>25</option>
+          <option>587 STARTTLS</option>
+        </select>
+      </div>
+    </div>
+    <div class="notice-box">
+      <strong>安全说明</strong>
+      <span>密码或授权码后续应由后端加密保存；前端只负责录入和测试，不应写入页面静态代码。</span>
+    </div>
+    <div class="notify-actions">
+      <button class="btn btn-ghost" id="emailTestBtn">发送测试邮件</button>
+      <button class="btn btn-primary" id="emailSaveBtn">保存邮箱配置</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">飞书 Webhook 配置</div>
+        <div class="card-subtitle">配置飞书机器人 Webhook，用于接收平台告警、巡检结果、任务通知和运维提醒。</div>
+      </div>
+      <span class="pill pill-success">运维消息渠道</span>
+    </div>
+    <div class="_shpc-field">
+      <label>飞书机器人 Webhook</label>
+      <input id="feishuWebhook" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/..." autocomplete="off">
+    </div>
+    <div class="_shpc-field" style="margin-top:16px;">
+      <label>消息类型</label>
+      <div class="notify-checks">
+        <label><input type="checkbox" class="feishuType" value="clusterAlert" checked> 集群告警</label>
+        <label><input type="checkbox" class="feishuType" value="inspection" checked> 巡检报告</label>
+        <label><input type="checkbox" class="feishuType" value="ldapSync" checked> LDAP 同步结果</label>
+        <label><input type="checkbox" class="feishuType" value="jobException"> 作业异常通知</label>
+      </div>
+    </div>
+    <div class="notice-box">
+      <strong>渠道用途</strong>
+      <span>飞书 Webhook 用于项目向运维群推送消息；用户账号密码仍通过系统邮箱发送给对应用户。</span>
+    </div>
+    <div class="notify-actions">
+      <button class="btn btn-ghost" id="feishuTestBtn">发送测试消息</button>
+      <button class="btn btn-primary" id="feishuSaveBtn">保存 Webhook</button>
+    </div>
+  </div>
+</div>
+    <div style="height:40px;"></div>
+  </main>
+</div>
+
+<script src="js/app.js?v=20260703profile"></script>
+<script>
+(function () {
+  const els = {
+    emailAccount: document.getElementById('emailAccount'),
+    emailPassword: document.getElementById('emailPassword'),
+    emailPOP3: document.getElementById('emailPOP3'),
+    emailSMTP: document.getElementById('emailSMTP'),
+    emailIMAP: document.getElementById('emailIMAP'),
+    emailPort: document.getElementById('emailPort'),
+    feishuWebhook: document.getElementById('feishuWebhook')
+  };
+  function feishuTypes() {
+    return Array.from(document.querySelectorAll('.feishuType')).filter(item => item.checked).map(item => item.value);
+  }
+  function payload() {
+    return {
+      email: {
+        account: els.emailAccount.value.trim(),
+        password: els.emailPassword.value,
+        pop3: els.emailPOP3.value.trim(),
+        smtp: els.emailSMTP.value.trim(),
+        imap: els.emailIMAP.value.trim(),
+        port: els.emailPort.value
+      },
+      webhook: els.feishuWebhook.value.trim(),
+      messageTypes: feishuTypes()
+    };
+  }
+  async function request(url, options) {
+    const res = await fetch(url, Object.assign({ headers: { 'Content-Type': 'application/json' }, cache: 'no-store' }, options || {}));
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    return data;
+  }
+  async function load() {
+    try {
+      const data = await request('/api/v1/config/notify');
+      const cfg = data.config || {};
+      const email = cfg.email || {};
+      els.emailAccount.value = email.account || '';
+      els.emailPOP3.value = email.pop3 || 'pop.163.com';
+      els.emailSMTP.value = email.smtp || 'smtp.163.com';
+      els.emailIMAP.value = email.imap || 'imap.163.com';
+      els.emailPort.value = email.port || '465 SSL';
+      els.emailPassword.value = '';
+      els.feishuWebhook.value = cfg.webhook || '';
+      const enabled = new Set(cfg.messageTypes || []);
+      document.querySelectorAll('.feishuType').forEach(item => {
+        item.checked = enabled.size ? enabled.has(item.value) : item.checked;
+      });
+    } catch (err) {
+      App.toast('通知配置数据未获取：' + err.message, 'danger');
+    }
+  }
+  async function save() {
+    await request('/api/v1/config/notify', { method: 'PUT', body: JSON.stringify(payload()) });
+  }
+  document.getElementById('emailSaveBtn').addEventListener('click', async function () {
+    try {
+      await save();
+      App.toast('邮箱配置已保存', 'success');
+      await load();
+    } catch (err) {
+      App.toast('邮箱配置保存失败：' + err.message, 'danger');
+    }
+  });
+  document.getElementById('emailTestBtn').addEventListener('click', async function () {
+    try {
+      await request('/api/v1/config/notify/email/test', { method: 'POST', body: JSON.stringify(payload()) });
+      App.toast('测试邮件已发送，请检查配置邮箱收件箱', 'success');
+      await load();
+    } catch (err) {
+      App.toast('测试邮件发送失败：' + err.message, 'danger');
+    }
+  });
+  document.getElementById('feishuSaveBtn').addEventListener('click', async function () {
+    try {
+      await save();
+      App.toast('飞书 Webhook 配置已保存', 'success');
+    } catch (err) {
+      App.toast('飞书 Webhook 保存失败：' + err.message, 'danger');
+    }
+  });
+  document.getElementById('feishuTestBtn').addEventListener('click', async function () {
+    try {
+      await save();
+      await request('/api/v1/config/notify/feishu/test', { method: 'POST', body: JSON.stringify({ webhook: els.feishuWebhook.value.trim() }) });
+      App.toast('飞书测试消息已发送', 'success');
+    } catch (err) {
+      App.toast('飞书测试消息发送失败：' + err.message, 'danger');
+    }
+  });
+  load();
+})();
+</script>
+</body>
+</html>

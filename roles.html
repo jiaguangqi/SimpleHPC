@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,"><title>simpleHPC — 角色管理</title><link rel="stylesheet" href="css/theme.css?v=20260703profile"><link rel="stylesheet" href="css/effects.css?v=20260702sample"></head>
+<body class="shpc-sample-page shpc-rbac-page"><div class="layout">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-icon">S</div><span class="brand-name">simpleHPC</span></div>
+    <ul class="nav">
+      <li class="nav-group-toggle" data-submenu="overview">概览</li><li class="nav-submenu" id="submenu-overview">
+        <a class="nav-submenu-item" href="index.html">仪表盘</a>
+      </li>
+      <li class="nav-group-toggle expanded" data-submenu="users">账户管理</li><li class="nav-submenu expanded" id="submenu-users">
+        <a class="nav-submenu-item" href="units.html">单位管理</a>
+        <a class="nav-submenu-item" href="teams.html">团队管理</a>
+        <a class="nav-submenu-item" href="users.html">用户管理</a>
+        <a class="nav-submenu-item" href="admins.html">管理员账号管理</a>
+        <a class="nav-submenu-item active" href="roles.html">角色管理</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="compute">计算管理</li><li class="nav-submenu" id="submenu-compute">
+        <a class="nav-submenu-item" href="partitions.html">资源队列配置</a>
+        <a class="nav-submenu-item" href="queue-status.html">队列状态</a>
+        <a class="nav-submenu-item" href="nodes.html">节点状态</a>
+        <a class="nav-submenu-item" href="qos.html">QOS 策略</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="data">数据管理</li><li class="nav-submenu" id="submenu-data">
+        <a class="nav-submenu-item" href="data.html">数据目录</a>
+        <a class="nav-submenu-item" href="data-acl.html">访问授权</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="jobs">作业中心</li><li class="nav-submenu" id="submenu-jobs">
+        <a class="nav-submenu-item" href="job-templates.html">作业模板</a>
+        <a class="nav-submenu-item" href="job-list.html">作业列表</a>
+        <a class="nav-submenu-item" href="vnc-desktop.html">VNC 桌面</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="ops">监控运维</li><li class="nav-submenu" id="submenu-ops">
+        <a class="nav-submenu-item" href="monitoring.html">监控告警</a>
+        <a class="nav-submenu-item" href="inspection.html">巡检报告</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="system">系统</li><li class="nav-submenu" id="submenu-system">
+        <a class="nav-submenu-item" href="settings.html">平台设置</a>
+        <a class="nav-submenu-item" href="ldap.html">LDAP 配置</a>
+        <a class="nav-submenu-item" href="slurm.html">Slurm 配置</a>
+        <a class="nav-submenu-item" href="storage.html">存储配置</a>
+        <a class="nav-submenu-item" href="notify.html">通知配置</a>
+        <a class="nav-submenu-item" href="audit.html">审计日志</a>
+      </li>
+    </ul>
+    <div class="sidebar-user"><div class="avatar">管</div><div><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">管理员</div><div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">cluster-admin</div></div></div>
+  </aside>
+  <header class="header"><h1 class="header-title">角色管理</h1><div class="header-actions">
+      <input class="search-field" placeholder="搜索..." id="globalSearch">
+      <button class="btn-icon" aria-label="通知" data-dropdown='{"html":"<div class=\"_shpc-dropdown-item\">通知消息</div><div class=\"_shpc-dropdown-item\"><span style=\"color:var(--success)\">●</span> 邮件服务与 LDAP 同步正常</div>","width":"260px","placement":"bottom-end"}'>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </button>
+      <div class="avatar" style="cursor:pointer;" data-dropdown='{"html":"<a class=\"_shpc-dropdown-item\" href=\"users.html\">个人资料</a><button type=\"button\" class=\"_shpc-dropdown-item\" style=\"width:100%;border:0;background:transparent;text-align:left;font:inherit\" onclick=\"App.openPasswordDrawer()\">修改密码</button><div class=\"_shpc-dropdown-divider\"></div><button type=\"button\" class=\"_shpc-dropdown-item\" style=\"width:100%;border:0;background:transparent;text-align:left;font:inherit;color:var(--danger)\" onclick=\"App.logout()\">退出登录</button>","width":"160px","placement":"bottom-end"}'>管</div>
+    </div></header>
+  <main class="main">
+
+<section class="rbac-hero"><div><span class="rbac-eyebrow"><img class="shpc-hero-icon" src="assets/icons/rbac.svg" alt="">ACCESS CONTROL</span><h2>角色与权限工作台</h2><p>内置角色与自定义角色共存；菜单、操作、数据范围和文件边界由同一份 RBAC 配置驱动。</p></div><div class="rbac-hero-rule"><b>权限合并规则</b><span>启用角色取并集 · 数据范围取最大 · 文件策略独立合并</span></div></section>
+<div class="card rbac-workbench">
+  <div class="card-header"><div><div class="card-title">角色管理</div><div class="card-subtitle">角色禁用、权限修改与用户绑定变更即时失效</div></div><div class="rbac-toolbar"><div class="rbac-view-switch"><button class="btn active" data-role-view="list">角色列表</button><button class="btn" data-role-view="matrix">权限矩阵</button></div><button id="newRoleButton" class="btn btn-primary" data-permission="action.roles.create">新建角色</button></div></div>
+  <section id="roleListView"><div class="table-wrap"><table><thead><tr><th>角色</th><th>编码</th><th>作用域</th><th>权限摘要</th><th>绑定用户</th><th>状态</th><th>操作</th></tr></thead><tbody id="roleListBody"><tr><td colspan="7">正在读取 RBAC 角色...</td></tr></tbody></table></div></section>
+  <section id="roleMatrixView" hidden><div class="rbac-matrix-intro"><b>权限矩阵</b><span>单元格同时表达菜单可见性、最高操作级别与最大数据范围。</span></div><div class="table-wrap" id="matrixTable"></div></section>
+</div>
+
+    <div style="height:40px;"></div>
+  </main>
+</div><script src="js/app.js?v=20260703profile"></script><script src="js/roles.js?v=20260701"></script><script src="js/ui-effects.js?v=20260702sample"></script></body></html>

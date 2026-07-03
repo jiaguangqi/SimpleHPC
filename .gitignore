@@ -1,0 +1,64 @@
+# macOS / editor
+.DS_Store
+._*
+.idea/
+.vscode/
+*.swp
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.local
+*.local.*
+docs/*.local.md
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+
+# Runtime data
+data/
+uploads/
+logs/
+tmp/
+temp/
+backups/
+.deploy-backups/
+releases/
+rbac-shadow-*.txt
+rbac-shadow-*.log
+.rbac-*
+slurm-*.out
+slurm-*.err
+
+# Build artifacts
+bin/
+dist/
+build/
+.build/
+coverage/
+*.test
+*.prof
+*.pprof
+simplehpc-backend
+backend/simplehpc-backend*
+backend/dist/
+backend/server
+
+# Archives and database dumps
+*.dump
+*.sql.gz
+*.tgz
+*.tar
+*.tar.gz
+*.zip
+
+# Historical backup files
+*.bak
+*.bak-*
+*.bak-codex-*
+*~

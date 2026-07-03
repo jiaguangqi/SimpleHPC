@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,"><title>simpleHPC — 作业列表</title><link rel="stylesheet" href="css/theme.css?v=20260703profile"></head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-icon">S</div><span class="brand-name">simpleHPC</span></div>
+    <ul class="nav">
+      <li class="nav-group-toggle" data-submenu="overview">概览</li><li class="nav-submenu" id="submenu-overview">
+        <a class="nav-submenu-item" href="index.html">仪表盘</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="users">账户管理</li><li class="nav-submenu" id="submenu-users">
+        <a class="nav-submenu-item" href="units.html">单位管理</a>
+        <a class="nav-submenu-item" href="teams.html">团队管理</a>
+        <a class="nav-submenu-item" href="users.html">用户管理</a>
+        <a class="nav-submenu-item" href="admins.html">管理员账号管理</a>
+        <a class="nav-submenu-item" href="roles.html">角色管理</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="compute">计算管理</li><li class="nav-submenu" id="submenu-compute">
+        <a class="nav-submenu-item" href="partitions.html">资源队列配置</a>
+        <a class="nav-submenu-item" href="queue-status.html">队列状态</a>
+        <a class="nav-submenu-item" href="nodes.html">节点状态</a>
+        <a class="nav-submenu-item" href="qos.html">QOS 策略</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="data">数据管理</li><li class="nav-submenu" id="submenu-data">
+        <a class="nav-submenu-item" href="data.html">数据目录</a>
+        <a class="nav-submenu-item" href="data-acl.html">访问授权</a>
+      </li>
+      <li class="nav-group-toggle expanded" data-submenu="jobs">作业中心</li><li class="nav-submenu expanded" id="submenu-jobs">
+        <a class="nav-submenu-item" href="job-templates.html">作业模板</a>
+        <a class="nav-submenu-item active" href="job-list.html">作业列表</a>
+        <a class="nav-submenu-item" href="vnc-desktop.html">VNC 桌面</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="ops">监控运维</li><li class="nav-submenu" id="submenu-ops">
+        <a class="nav-submenu-item" href="monitoring.html">监控告警</a>
+        <a class="nav-submenu-item" href="inspection.html">巡检报告</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="system">系统</li><li class="nav-submenu" id="submenu-system">
+        <a class="nav-submenu-item" href="settings.html">平台设置</a>
+        <a class="nav-submenu-item" href="ldap.html">LDAP 配置</a>
+        <a class="nav-submenu-item" href="slurm.html">Slurm 配置</a>
+        <a class="nav-submenu-item" href="storage.html">存储配置</a>
+        <a class="nav-submenu-item" href="notify.html">通知配置</a>
+        <a class="nav-submenu-item" href="audit.html">审计日志</a>
+      </li>
+    </ul>
+    <div class="sidebar-user"><div class="avatar">管</div><div><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">管理员</div><div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">cluster-admin</div></div></div>
+  </aside>
+  <header class="header"><h1 class="header-title">作业列表</h1>
+    <div class="header-actions">
+      <input class="search-field" placeholder="搜索..." id="globalSearch">
+      <button class="btn-icon" aria-label="通知" data-dropdown='{"html":"<div class=\"_shpc-dropdown-item\">通知消息</div><div class=\"_shpc-dropdown-item\"><span style=\"color:var(--success)\">●</span> 系统正常</div><div class=\"_shpc-dropdown-item\"><a href=\"monitoring.html\" style=\"font-size:12px;color:var(--accent)\">查看全部 →</a></div>","width":"260px","placement":"bottom-end"}'>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </button>
+      <div class="avatar" style="cursor:pointer;" data-dropdown='{"html":"<a class=\"_shpc-dropdown-item\" href=\"users.html\">个人资料</a><button type=\"button\" class=\"_shpc-dropdown-item\" style=\"width:100%;border:0;background:transparent;text-align:left;font:inherit\" onclick=\"App.openPasswordDrawer()\">修改密码</button><div class=\"_shpc-dropdown-divider\"></div><button type=\"button\" class=\"_shpc-dropdown-item\" style=\"width:100%;border:0;background:transparent;text-align:left;font:inherit;color:var(--danger)\" onclick=\"App.logout()\">退出登录</button>","width":"160px","placement":"bottom-end"}'>管</div>
+    </div>
+  </header>
+  <main class="main">
+
+
+<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+        <div><div class="card-title" style="margin:0;">集群作业列表</div><div class="card-subtitle" style="margin-top:4px;">查看 Slurm 当前和历史作业，点击作业号进入详情、资源使用和工作目录数据。</div></div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="jobFilter" style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);font-size:13px;background:var(--surface);color:var(--fg);">
+            <option>全部状态</option><option>运行中</option><option>排队中</option><option>挂起</option><option>完成</option><option>失败</option>
+          </select>
+          <button class="btn btn-ghost" style="font-size:13px;" onclick="refreshJobList()">刷新</button>
+          <a class="btn btn-primary" style="font-size:13px;text-decoration:none;" href="job-templates.html">提交作业</a>
+        </div>
+      </div>
+      <div id="adminJobFilters" class="job-admin-filters" hidden>
+        <span class="job-admin-filter-label">管理员筛选</span>
+        <label>用户 <select id="jobUserFilter"><option value="">全部用户</option></select></label>
+        <label>用户组 <select id="jobGroupFilter"><option value="">全部用户组</option></select></label>
+        <label>分区 <select id="jobPartitionFilter"><option value="">全部分区</option></select></label>
+        <button type="button" class="btn btn-ghost job-filter-reset" id="jobFilterReset">重置筛选</button>
+      </div>
+      <div class="table-wrap"><table id="jobTable" class="job-list-table">
+        <thead><tr><th><input type="checkbox" class="job-list-master" aria-label="全选当前页作业" onchange="toggleVisibleJobs(this,this.checked)"></th><th>作业ID</th><th>名称</th><th>用户</th><th>分区</th><th>状态</th><th>N/C/G</th><th>运行时间</th><th>运行节点</th><th>操作</th></tr></thead>
+        <tbody id="jobTableBody"></tbody>
+      </table></div>
+      <div id="jobPagination" class="job-pagination"></div>
+    </div>
+
+    <div style="height:40px;"></div>
+  
+  </main>
+</div>
+<script src="js/job-pagination.js?v=20260628"></script>
+<script>
+var jobDetails={};
+var jobPageSize=15;
+var jobCurrentPage=1;
+var jobTotal=0;
+var jobTotalPages=1;
+var jobListData=[];
+var jobListSource='数据未获取';
+var templateRunByJob={};
+var jobSearchTimer=null;
+var jobOutputTimer=null;
+var activeJobOutputId='';
+var currentJobUser=(function(){
+  try{return JSON.parse(localStorage.getItem('simplehpc_user')||'{}')||{};}catch(error){return {};}
+})();
+var jobIsAdmin=currentJobUser.type==='admin';
+function normalizeSlurmState(state){
+  var value=String(state||'').toUpperCase();
+  if(value==='RUNNING' || value==='R') return '运行中';
+  if(value==='PENDING' || value==='PD') return '排队中';
+  if(value==='SUSPENDED' || value==='S') return '挂起';
+  if(value==='COMPLETED' || value==='CD' || value==='COMPLETING' || value==='CG') return '完成';
+  if(value.indexOf('CANCELLED')===0 || value==='CA') return '已取消';
+  if(value.indexOf('TIMEOUT')===0 || value==='TO') return '超时';
+  if(value.indexOf('FAILED')===0 || value==='F') return '失败';
+  return state || '未知';
+}
+function normalizeRuntime(value){
+  if(!value || value==='00:00:00') return '—';
+  return value;
+}
+function nodeListFromApi(job){
+  var status=normalizeSlurmState(job.state);
+  var raw=job.nodeList || job.nodesAllocated || job.reason || '';
+  if(!raw || raw==='None assigned' || /^\(.+\)$/.test(raw)) return status==='排队中' ? ['pending'] : [];
+  if(raw.indexOf(',')>=0) return raw.split(',').map(function(item){return item.trim()}).filter(Boolean);
+  return [raw];
+}
+function normalizeApiJob(job){
+  return {
+    id:String(job.id||job.jobId||''),
+    name:job.name||job.jobName||'',
+    user:job.user||job.userName||'',
+    queue:job.partition||job.queue||'',
+    status:normalizeSlurmState(job.state),
+    nodes:Number(job.nodes||job.nodeCount||0)||0,
+    cpus:Number(job.cpus||job.cpuCount||0)||0,
+    gpus:Number(job.gpus||job.gpuCount||0)||0,
+    runtime:normalizeRuntime(job.time||job.runtime||job.elapsed),
+    nodeList:nodeListFromApi(job),
+    submit:job.submit||job.submitTime||'',
+    syncedAt:job.syncedAt||'',
+    source:job.source||''
+  };
+}
+async function loadJobListFromApi(forceRefresh){
+  var tbody=document.getElementById('jobTableBody');
+  if(tbody) tbody.innerHTML='<tr><td colspan="10" class="job-empty-row">正在从 /api/v1/slurm/jobs 获取作业数据...</td></tr>';
+  try{
+    var status=document.getElementById('jobFilter')?.value || '全部状态';
+    var keyword=(document.getElementById('globalSearch')?.value || '').trim();
+    var params=new URLSearchParams({page:String(jobCurrentPage),pageSize:String(jobPageSize)});
+    if(forceRefresh) params.set('refresh','1');
+    if(status && status!=='全部状态') params.set('status',status);
+    if(keyword) params.set('keyword',keyword);
+    if(jobIsAdmin){
+      var selectedUser=document.getElementById('jobUserFilter')?.value || '';
+      var selectedGroup=document.getElementById('jobGroupFilter')?.value || '';
+      var selectedPartition=document.getElementById('jobPartitionFilter')?.value || '';
+      if(selectedUser) params.set('user',selectedUser);
+      if(selectedGroup) params.set('group',selectedGroup);
+      if(selectedPartition) params.set('partition',selectedPartition);
+    }
+    var responses=await Promise.all([
+      App.apiFetch('/api/v1/slurm/jobs?'+params.toString(),{cache:'no-store'}),
+      fetch('/api/v1/job-template-runs',{cache:'no-store'})
+    ]);
+    var res=responses[0];
+    var data=await res.json().catch(function(){return {};});
+    if(!res.ok) throw new Error(data.error || res.statusText || '接口请求失败');
+    var runData=await responses[1].json().catch(function(){return {};});
+    templateRunByJob={};
+    if(responses[1].ok){
+      (runData.items||[]).forEach(function(run){
+        if(run.slurmJobId && !templateRunByJob[String(run.slurmJobId)]) templateRunByJob[String(run.slurmJobId)]=run;
+      });
+    }
+    var items=Array.isArray(data) ? data : (data.items || []);
+    jobListSource=data.source || 'slurm-api';
+    jobListData=items.map(normalizeApiJob).filter(function(job){return job.id;});
+    jobTotal=Number(data.total ?? data.count ?? jobListData.length)||0;
+    jobCurrentPage=Math.max(1,Number(data.page)||jobCurrentPage);
+    jobPageSize=Math.max(1,Number(data.pageSize)||jobPageSize);
+    jobTotalPages=Math.max(1,Number(data.totalPages)||Math.ceil(jobTotal/jobPageSize));
+    if(!jobListData.length){
+      if(tbody) tbody.innerHTML='<tr><td colspan="10" class="job-empty-row">没有匹配的作业</td></tr>';
+      renderJobPagination(jobTotal,jobTotalPages);
+      return true;
+    }
+    renderJobList();
+    return true;
+  }catch(err){
+    jobListData=[];
+    jobTotal=0;
+    jobTotalPages=1;
+    if(tbody) tbody.innerHTML='<tr><td colspan="10" class="job-empty-row"><div class="api-data-missing"><strong>数据未获取</strong>：/api/v1/slurm/jobs '+escapeHtml(err.message)+'</div></td></tr>';
+    document.getElementById('jobPagination').innerHTML='';
+    return false;
+  }
+}
+function statusPillClass(status){
+  return ({'运行中':'pill-success','排队中':'pill-warn','挂起':'pill-suspended','完成':'pill-info','失败':'pill-danger','已取消':'pill-cancelled','超时':'pill-timeout'})[status] || 'pill-neutral';
+}
+function compressNodeList(nodes){
+  if(!nodes || !nodes.length) return '';
+  if(nodes.length===1) return nodes[0];
+  var groups={};
+  nodes.forEach(function(node){
+    var match=String(node).match(/^(.+?)(\d+)$/);
+    if(!match){groups[node]=groups[node]||{raw:[],nums:[],width:0,prefix:node};groups[node].raw.push(node);return;}
+    var key=match[1];
+    groups[key]=groups[key]||{raw:[],nums:[],width:match[2].length,prefix:key};
+    groups[key].raw.push(node);
+    groups[key].nums.push(parseInt(match[2],10));
+    groups[key].width=Math.max(groups[key].width,match[2].length);
+  });
+  return Object.keys(groups).map(function(key){
+    var group=groups[key];
+    if(!group.nums.length) return group.raw.join(', ');
+    var sorted=group.nums.slice().sort(function(a,b){return a-b});
+    var contiguous=sorted.every(function(n,idx){return idx===0 || n===sorted[idx-1]+1});
+    if(contiguous && sorted.length>1){
+      return group.prefix+'['+String(sorted[0]).padStart(group.width,'0')+'-'+String(sorted[sorted.length-1]).padStart(group.width,'0')+']';
+    }
+    return group.raw.length>3 ? group.raw.slice(0,3).join(', ')+', ...' : group.raw.join(', ');
+  }).join(', ');
+}
+function renderJobList(){
+  var tbody=document.getElementById('jobTableBody');
+  tbody.innerHTML=jobListData.map(jobRowHtml).join('') || '<tr><td colspan="10" class="job-empty-row">没有匹配的作业</td></tr>';
+  renderJobPagination(jobTotal,jobTotalPages);
+  syncJobListMaster();
+}
+function jobRowHtml(job){
+  var fullNodes=job.nodeList.join(', ');
+  var nodeLabel=compressNodeList(job.nodeList);
+  var actions=`<button class="small-action" onclick="openJobDetail('${job.id}')">详情</button>`;
+  var templateRun=templateRunByJob[job.id];
+  if(job.status==='运行中' && templateRun && templateRun.accessUrl){
+    var accessLabel=templateRun.kind==='novnc'?'访问桌面':'访问应用';
+    actions+=` <button class="small-action job-access-action" onclick="openTemplateRun('${job.id}')">${accessLabel}</button>`;
+  }else if((job.status==='运行中'||job.status==='排队中') && templateRun && (templateRun.kind==='novnc'||templateRun.kind==='webapp')){
+    actions+=` <span class="job-service-pending" title="计算节点上的服务正在启动">服务启动中</span>`;
+  }
+  if(job.status==='运行中') actions+=` <button class="small-action" onclick="confirmJobAction('${job.id}','cancel','终止')">终止</button> <button class="small-action" onclick="confirmJobAction('${job.id}','suspend','挂起')">挂起</button>`;
+  if(job.status==='挂起') actions+=` <button class="small-action" onclick="confirmJobAction('${job.id}','cancel','终止')">终止</button> <button class="small-action" onclick="confirmJobAction('${job.id}','resume','恢复')">恢复</button>`;
+  return `<tr><td><input type="checkbox" class="job-list-row" onchange="syncJobListMaster()"></td><td><button class="job-id-link" onclick="openJobDetail('${job.id}')">${job.id}</button></td><td>${escapeHtml(job.name)}</td><td>${escapeHtml(job.user)}</td><td>${escapeHtml(job.queue)}</td><td><span class="pill ${statusPillClass(job.status)}">${job.status}</span></td><td>${job.nodes} / ${job.cpus} / ${job.gpus}</td><td>${job.runtime}</td><td class="job-nodes-cell"><code class="job-node-list" title="${escapeHtml(fullNodes)}">${escapeHtml(nodeLabel)}</code></td><td>${actions}</td></tr>`;
+}
+function openTemplateRun(jobId){
+  var run=templateRunByJob[jobId];
+  if(!run || !run.accessUrl) return App.toast('交互服务尚未就绪','warn');
+  window.open(run.accessUrl,'_blank','noopener');
+}
+function renderJobPagination(total,pages){
+  var el=document.getElementById('jobPagination');
+  var start=total?(jobCurrentPage-1)*jobPageSize+1:0;
+  var end=Math.min(jobCurrentPage*jobPageSize,total);
+  var buttons=JobPagination.tokens(jobCurrentPage,pages).map(function(token){
+    if(token==='ellipsis') return '<span class="job-page-ellipsis" aria-hidden="true">…</span>';
+    return '<button class="job-page-btn '+(token===jobCurrentPage?'active':'')+'" onclick="gotoJobPage('+token+')">'+token+'</button>';
+  }).join('');
+  var sizes=[15,30,50,100].map(function(size){return '<option value="'+size+'" '+(size===jobPageSize?'selected':'')+'>'+size+' 条/页</option>'}).join('');
+  el.innerHTML='<div class="job-pagination-summary"><span>共 '+total+' 条，当前 '+start+'-'+end+'</span><select class="job-page-size" aria-label="每页条数" onchange="changeJobPageSize(this.value)">'+sizes+'</select></div><div class="job-pagination-controls"><button class="job-page-btn" '+(jobCurrentPage===1?'disabled':'')+' onclick="gotoJobPage('+(jobCurrentPage-1)+')">上一页</button>'+buttons+'<button class="job-page-btn" '+(jobCurrentPage===pages?'disabled':'')+' onclick="gotoJobPage('+(jobCurrentPage+1)+')">下一页</button><label class="job-page-jump">跳至 <input type="number" min="1" max="'+pages+'" value="'+jobCurrentPage+'" onkeydown="if(event.key===\'Enter\') jumpJobPage(this.value)"> 页</label><button class="job-page-btn" onclick="jumpJobPage(this.previousElementSibling.querySelector(\'input\').value)">确定</button></div>';
+}
+function gotoJobPage(page){
+  jobCurrentPage=Math.max(1,Math.min(jobTotalPages,Number(page)||1));
+  loadJobListFromApi();
+}
+function jumpJobPage(page){
+  gotoJobPage(page);
+}
+function changeJobPageSize(size){
+  jobPageSize=Math.max(1,Number(size)||15);
+  jobCurrentPage=1;
+  loadJobListFromApi();
+}
+function resetAndRenderJobList(){
+  jobCurrentPage=1;
+  loadJobListFromApi();
+}
+function refreshJobList(){
+  App.loading.show('正在同步 Slurm 作业状态...');
+  loadJobListFromApi(true).then(function(ok){
+    if(ok) App.toast('作业状态已更新','success');
+    else App.toast('作业状态更新失败','danger');
+  }).finally(function(){
+    App.loading.hide();
+  });
+}
+function confirmJobAction(id,action,label){
+  App.confirm('确认'+label+'作业 #'+id+'？',{danger:action==='cancel',onConfirm:function(){operateJob(id,action,label)}});
+}
+async function operateJob(id,action,label){
+  App.loading.show('正在'+label+'作业 #'+id+'...');
+  try{
+    var res=await App.apiFetch('/api/v1/slurm/jobs/'+encodeURIComponent(id)+'/'+action,{method:'POST',headers:{'Content-Type':'application/json'}});
+    var data=await res.json().catch(function(){return {};});
+    if(!res.ok) throw new Error(data.error || res.statusText || '操作失败');
+    App.toast('作业 #'+id+' 已'+label,'success');
+    await loadJobListFromApi();
+  }catch(err){
+    App.toast(label+'失败：'+err.message,'error');
+  }finally{
+    App.loading.hide();
+  }
+}
+function toggleVisibleJobs(input,checked){
+  document.querySelectorAll('#jobTableBody .job-list-row').forEach(function(box){box.checked=checked});
+  syncJobListMaster();
+}
+function syncJobListMaster(){
+  var master=document.querySelector('.job-list-master');
+  var boxes=Array.from(document.querySelectorAll('#jobTableBody .job-list-row'));
+  var checked=boxes.filter(function(box){return box.checked}).length;
+  if(!master) return;
+  master.checked=boxes.length>0 && checked===boxes.length;
+  master.indeterminate=checked>0 && checked<boxes.length;
+}
+function ensureJobDetail(id){
+  if(jobDetails[id]) return jobDetails[id];
+  var row=jobListData.find(function(item){return item.id===id});
+  if(!row) return null;
+  jobDetails[id]={
+    id:row.id,
+    name:row.name || '数据未获取',
+    status:row.status,
+    pill:statusPillClass(row.status),
+    user:row.user || '数据未获取',
+    queue:row.queue || '数据未获取',
+    qos:row.source || jobListSource || '数据未获取',
+    cpus:row.cpus,
+    nodeCount:row.nodes,
+    nodes:row.nodeList && row.nodeList.length ? row.nodeList : (row.status==='排队中' ? ['pending'] : ['数据未获取']),
+    runtime:row.runtime==='—' ? '未开始' : row.runtime,
+    wait:'数据未获取',
+    submitTime:row.submit || '数据未获取',
+    startTime:'数据未获取',
+    endTime:'数据未获取',
+    workdir:'数据未获取：后端尚未返回作业工作目录',
+    script:'数据未获取：后端尚未返回作业脚本',
+    metrics:{cpu:0,mem:0,gpu:0,disk:0,net:0},
+    files:[],
+    output:'数据未获取：后端尚未返回作业输出文件内容。',
+    stderr:'数据未获取：后端尚未返回 stderr 输出内容。'
+  };
+  return jobDetails[id];
+}
+function formatJobWait(submit,start){
+  var begin=Date.parse(submit), running=Date.parse(start);
+  if(!Number.isFinite(begin)||!Number.isFinite(running)||running<begin) return '数据未获取';
+  var seconds=Math.floor((running-begin)/1000);
+  var hours=String(Math.floor(seconds/3600)).padStart(2,'0');
+  var minutes=String(Math.floor((seconds%3600)/60)).padStart(2,'0');
+  var rest=String(seconds%60).padStart(2,'0');
+  return hours+':'+minutes+':'+rest;
+}
+async function openJobDetail(id){
+  var job=ensureJobDetail(id);
+  if(!job) return App.toast('未找到作业详情','warn');
+  try{
+    var response=await App.apiFetch('/api/v1/slurm/jobs/'+encodeURIComponent(id),{cache:'no-store'});
+    var payload=await response.json().catch(function(){return {}});
+    if(!response.ok) throw new Error(payload.error||'作业详情获取失败');
+    var detail=payload.detail||{};
+    job.name=detail.name||job.name;
+    job.status=normalizeSlurmState(detail.state);
+    job.pill=statusPillClass(job.status);
+    job.user=detail.user||job.user;
+    job.queue=detail.partition||job.queue;
+    job.qos=detail.qos||'数据未获取';
+    job.cpus=Number(detail.reqCpus||detail.cpus||job.cpus)||0;
+    job.nodeCount=Number(detail.nodes||job.nodeCount)||0;
+    job.nodes=nodeListFromApi({state:detail.state,nodeList:detail.nodeList});
+    job.runtime=normalizeRuntime(detail.elapsed);
+    job.submitTime=detail.submit||'数据未获取';
+    job.startTime=detail.start||'数据未获取';
+    job.endTime=detail.end||'数据未获取';
+    job.wait=formatJobWait(detail.submit,detail.start);
+    job.workdir=detail.workdir||'数据未获取';
+    job.requested=detail.requested||'数据未获取';
+    job.script=payload.script||'该历史作业没有可读取的模板脚本。';
+  }catch(error){
+    App.toast(error.message,'warn');
+  }
+  var title='<span class=\"job-drawer-title\"><strong>#'+job.id+' '+job.name+'</strong><span class=\"pill '+job.pill+'\">'+job.status+'</span><span class=\"job-title-meta\">队列 <b>'+job.queue+'</b>&nbsp;&nbsp; 节点 <b>'+job.nodes.join(', ')+'</b></span></span>';
+  stopJobOutputAutoRefresh();
+  var drawer=App.drawer({title:title,width:'98vw',content:jobDetailHtml(job),footerHtml:"<button class=\"btn btn-ghost _shpc-drawer-btn-close\">关闭</button><button class=\"btn btn-ghost\" onclick=\"downloadSelectedJobFiles('"+job.id+"')\">打包下载选中</button><button class=\"btn btn-primary\" onclick=\"downloadAllJobFiles('"+job.id+"')\">下载全部输出</button>",onClose:stopJobOutputAutoRefresh});
+  activeJobOutputId=job.id;
+  loadJobArtifacts(job,drawer.el,false);
+  jobOutputTimer=setInterval(function(){
+    if(!drawer.el.isConnected) return stopJobOutputAutoRefresh();
+    var checkbox=drawer.el.querySelector('.job-auto-refresh input');
+    if(checkbox && checkbox.checked) loadJobArtifacts(job,drawer.el,false);
+  },5000);
+}
+function jobDetailHtml(job){
+  return '<div class=\"job-detail\"><div class=\"job-detail-header\"><div class=\"job-hero\"><h2>'+job.name+'</h2><div><span class=\"pill '+job.pill+'\">'+job.status+'</span><span>用户 '+job.user+'</span><span>QoS '+job.qos+'</span></div></div>'+jobTimelineHtml(job)+'</div><section class=\"job-left-panel\">'+jobTabsHtml(job)+'</section><section class=\"job-files-panel\">'+jobFilesHtml(job)+'</section></div>';
+}
+function jobTabsHtml(job){
+  return `<div class="job-detail-tabs"><button class="job-detail-tab active" onclick="switchJobTab(this,'details')">作业详情</button><button class="job-detail-tab" onclick="switchJobTab(this,'script')">作业脚本</button><button class="job-detail-tab" onclick="switchJobTab(this,'stdout')">stdout</button><button class="job-detail-tab" onclick="switchJobTab(this,'stderr')">stderr</button><button class="job-refresh-output" type="button" title="立即刷新输出" aria-label="立即刷新输出" onclick="refreshJobOutput(this)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 1-15.5 6.2"/><path d="M3 12A9 9 0 0 1 18.5 5.8"/><path d="M18 2v4h-4"/><path d="M6 22v-4h4"/></svg></button><label class="job-auto-refresh"><input type="checkbox" checked> 5s 自动</label></div><div class="job-tab-body"><pre class="job-console job-tab-panel active" data-panel="details">${escapeHtml(jobDetailText(job))}</pre><pre class="job-console job-tab-panel" data-panel="script">${escapeHtml(job.script)}</pre><pre class="job-console job-tab-panel" data-panel="stdout">正在读取标准输出...</pre><pre class="job-console job-tab-panel" data-panel="stderr">正在读取标准错误输出...</pre></div>`;
+}
+function jobDetailText(job){
+  return ['作业名： '+job.name,'作业ID： '+job.id,'用户名： '+(job.login||job.user),'作业状态： '+jobStateCode(job.status),'申请资源： '+(job.requested||'数据未获取'),'运行节点： '+job.nodes.join(', '),'提交时间： '+(job.submitTime||'Unknown'),'开始时间： '+(job.startTime||'Unknown'),'运行时间： '+job.runtime,'排队用时： '+job.wait,'退出时间： '+(job.endTime||'Unknown'),'工作目录： '+job.workdir].join('\n');
+}
+function jobStateCode(state){
+  return ({'运行中':'RUNNING','排队中':'PENDING','挂起':'SUSPENDED','完成':'COMPLETED','失败':'FAILED','已取消':'CANCELLED','超时':'TIMEOUT'})[state] || state;
+}
+function switchJobTab(btn,name){
+  var root=btn.closest('.job-left-panel');
+  root.querySelectorAll('.job-detail-tab').forEach(function(item){item.classList.toggle('active', item===btn)});
+  root.querySelectorAll('.job-tab-panel').forEach(function(panel){panel.classList.toggle('active', panel.dataset.panel===name)});
+}
+function stopJobOutputAutoRefresh(){
+  if(jobOutputTimer) clearInterval(jobOutputTimer);
+  jobOutputTimer=null;
+  activeJobOutputId='';
+}
+async function loadJobOutput(jobId,stream,drawerRoot){
+  var panel=drawerRoot.querySelector('.job-tab-panel[data-panel="'+stream+'"]');
+  if(!panel) return false;
+  try{
+    var response=await App.apiFetch('/api/v1/slurm/jobs/'+encodeURIComponent(jobId)+'/output?stream='+stream,{cache:'no-store'});
+    var data=await response.json().catch(function(){return {}});
+    if(!response.ok) throw new Error(data.error||'输出读取失败');
+    var text=data.content||'';
+    if(!data.exists) text=data.path?'输出文件尚未生成：'+data.path:(stream==='stderr'?'该作业未配置独立的标准错误输出文件。':'该作业未配置标准输出文件。');
+    if(data.truncated) text='[文件较大，仅显示最后 2 MiB]\n'+text;
+    panel.textContent=text||'(当前输出为空)';
+    panel.scrollTop=panel.scrollHeight;
+    return true;
+  }catch(error){
+    panel.textContent='读取失败：'+error.message;
+    return false;
+  }
+}
+async function loadJobOutputs(jobId,drawerRoot,manual){
+  var results=await Promise.all([loadJobOutput(jobId,'stdout',drawerRoot),loadJobOutput(jobId,'stderr',drawerRoot)]);
+  return results.every(Boolean);
+}
+function formatJobFileSize(size){
+  var value=Number(size)||0;
+  if(value<1024) return value+' B';
+  if(value<1048576) return (value/1024).toFixed(1)+' KiB';
+  if(value<1073741824) return (value/1048576).toFixed(1)+' MiB';
+  return (value/1073741824).toFixed(1)+' GiB';
+}
+function encodedJobFilePath(path){
+  return encodeURIComponent(path).replace(/'/g,'%27');
+}
+function renderJobFiles(job,drawerRoot){
+  var tbody=drawerRoot.querySelector('.job-file-table tbody');
+  if(!tbody) return;
+  if(!job.files.length){
+    tbody.innerHTML='<tr><td colspan="5" class="job-empty-row">工作目录当前没有文件</td></tr>';
+    return;
+  }
+  tbody.innerHTML=job.files.map(function(file){
+    var encoded=encodedJobFilePath(file.path);
+    var type=file.type==='directory'?'DIR':((file.name.split('.').pop()||'FILE').toUpperCase().slice(0,3));
+    var size=file.type==='directory'?'—':formatJobFileSize(file.size);
+    var modified=file.modTime?new Date(file.modTime).toLocaleString('zh-CN',{hour12:false}):'数据未获取';
+    var actions=file.type==='directory'
+      ? '<span class="muted">目录</span>'
+      : "<button class=\"small-action\" onclick=\"previewJobFile(decodeURIComponent('"+encoded+"'))\">预览</button> <button class=\"small-action\" onclick=\"downloadJobFile(decodeURIComponent('"+encoded+"'))\">下载</button>";
+    return '<tr><td><input type="checkbox" class="job-file-check" data-job="'+job.id+'" data-path="'+encoded+'"></td><td><div class="job-file-name"><span class="file-icon">'+type+'</span><span>'+escapeHtml(file.name)+'</span></div></td><td>'+size+'</td><td>'+modified+'</td><td>'+actions+'</td></tr>';
+  }).join('');
+}
+async function loadJobFiles(job,drawerRoot){
+  var tbody=drawerRoot.querySelector('.job-file-table tbody');
+  try{
+    var response=await fetch('/api/v1/storage/list?path='+encodeURIComponent(job.workdir)+'&showHidden=false',{cache:'no-store'});
+    var data=await response.json().catch(function(){return {}});
+    if(!response.ok) throw new Error(data.error||'工作目录读取失败');
+    job.files=Array.isArray(data.items)?data.items:[];
+    renderJobFiles(job,drawerRoot);
+    return true;
+  }catch(error){
+    if(tbody) tbody.innerHTML='<tr><td colspan="5" class="job-empty-row">读取失败：'+escapeHtml(error.message)+'</td></tr>';
+    return false;
+  }
+}
+async function loadJobArtifacts(job,drawerRoot,manual){
+  var results=await Promise.all([loadJobOutputs(job.id,drawerRoot,false),loadJobFiles(job,drawerRoot)]);
+  if(manual) App.toast(results.every(Boolean)?'输出和工作目录已更新':'部分作业数据读取失败',results.every(Boolean)?'success':'warn');
+}
+async function refreshJobOutput(btn){
+  var drawerRoot=btn.closest('._shpc-drawer');
+  if(!drawerRoot||!activeJobOutputId) return;
+  btn.classList.add('spinning');
+  try{
+    var job=jobDetails[activeJobOutputId];
+    if(job) await loadJobArtifacts(job,drawerRoot,true);
+  }finally{
+    btn.classList.remove('spinning');
+  }
+}
+function jobTimelineHtml(job){
+  var state=job.status;
+  var stageSegments={
+    '排队中':[100,0],
+    '运行中':[30,70],
+    '完成':[25,75],
+    '失败':[25,55],
+    '已取消':[25,35],
+    '超时':[25,55]
+  };
+  var segments=stageSegments[state]||[25,55];
+  var queuePct=segments[0];
+  var runPct=segments[1];
+  var tailPct=100-queuePct-runPct;
+  var endLabel=state==='运行中'?'预计结束':(state==='失败'?'结束时间':'结束时间');
+  var endTime=job.endTime&&job.endTime!=='Unknown'?job.endTime:(state==='排队中'?'等待分配中':'数据未获取');
+  var submitTime=job.submitTime&&job.submitTime!=='Unknown'?job.submitTime:'数据未获取';
+  var startTime=state==='排队中'?'未开始':(job.startTime&&job.startTime!=='Unknown'?job.startTime:'数据未获取');
+  return '<div class=\"job-timeline\" title=\"阶段条仅表示作业生命周期阶段，不代表精确时间比例\"><div class=\"timeline-labels\"><div><strong>提交时间</strong><span>'+submitTime+'</span></div><div><strong>开始计算时间</strong><span>'+startTime+'</span></div><div><strong>'+endLabel+'</strong><span>'+endTime+'</span></div></div><div class=\"timeline-bar\"><span class=\"queue\" style=\"width:'+queuePct+'%\"></span><span class=\"running\" style=\"width:'+runPct+'%\"></span><span class=\"tail '+(state==='失败'?'failed':'')+'\" style=\"width:'+tailPct+'%\"></span></div><div class=\"timeline-brackets\"><span style=\"width:'+queuePct+'%\">排队用时：'+job.wait+'</span><span style=\"width:'+Math.max(runPct,18)+'%\">计算用时：'+(state==='排队中'?'未开始':job.runtime)+'</span><small>阶段示意</small></div></div>';
+}
+function jobFilesHtml(job){
+  return `<div class="job-file-table"><table><thead><tr><th><input type="checkbox" class="job-file-master" aria-label="全选工作目录文件" onchange="toggleJobFiles(this,this.checked)"></th><th>名称</th><th>大小</th><th>修改时间</th><th>操作</th></tr></thead><tbody><tr><td colspan="5" class="job-empty-row">正在读取工作目录...</td></tr></tbody></table></div>`;
+}
+function metricRow(label,value,kind,unit){return '<div class=\"job-metric\"><div><span>'+label+'</span><strong>'+value+(unit||'%')+'</strong></div><div class=\"metric-bar\"><div class=\"metric-bar-fill '+kind+'\" style=\"width:'+Math.min(100,value)+'%\"></div></div></div>'}
+function toggleJobFiles(btn,checked){
+  var root=btn.closest('.job-detail');
+  root.querySelectorAll('.job-file-check').forEach(function(box){box.checked=checked});
+  var master=root.querySelector('.job-file-master');
+  if(master){master.checked=checked;master.indeterminate=false;}
+}
+function updateJobFileMaster(input){
+  var root=input.closest('.job-detail');
+  var boxes=Array.from(root.querySelectorAll('.job-file-check'));
+  var checked=boxes.filter(function(box){return box.checked}).length;
+  var master=root.querySelector('.job-file-master');
+  if(!master) return;
+  master.checked=checked===boxes.length;
+  master.indeterminate=checked>0 && checked<boxes.length;
+}
+function selectedJobFiles(id){return Array.from(document.querySelectorAll('.job-file-check[data-job=\"'+id+'\"]:checked')).map(function(x){return decodeURIComponent(x.dataset.path)})}
+async function archiveJobFiles(paths,name){
+  var response=await fetch('/api/v1/storage/archive',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({paths:paths})});
+  if(!response.ok){var data=await response.json().catch(function(){return {}});throw new Error(data.error||'打包失败');}
+  var link=document.createElement('a');link.href=URL.createObjectURL(await response.blob());link.download=name;link.click();setTimeout(function(){URL.revokeObjectURL(link.href)},1000);
+}
+async function downloadSelectedJobFiles(id){var files=selectedJobFiles(id);if(!files.length)return App.toast('请先勾选需要下载的数据','warn');try{await archiveJobFiles(files,'job-'+id+'-selected.zip')}catch(error){App.toast(error.message,'danger')}}
+async function downloadAllJobFiles(id){var job=jobDetails[id];var files=(job.files||[]).map(function(file){return file.path});if(!files.length)return App.toast('工作目录没有可下载的文件','warn');try{await archiveJobFiles(files,'job-'+id+'-outputs.zip')}catch(error){App.toast(error.message,'danger')}}
+function downloadJobFile(path){window.location.href='/api/v1/storage/download?path='+encodeURIComponent(path)}
+async function previewJobFile(path){try{var response=await fetch('/api/v1/storage/download?path='+encodeURIComponent(path),{cache:'no-store'});if(!response.ok)throw new Error('文件读取失败');var text=await response.text();App.drawer({title:'文件预览：'+escapeHtml(path.split('/').pop()),width:'720px',content:'<pre class=\"job-console\" style=\"max-height:520px\">'+escapeHtml(text.slice(-2097152))+'</pre>',showFooter:false})}catch(error){App.toast(error.message,'danger')}}
+function escapeHtml(text){return String(text).replace(/[&<>]/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]})}
+function fillJobFilter(select,items,valueOf,labelOf){
+  if(!select) return;
+  var first=select.options[0]?.outerHTML || '<option value="">全部</option>';
+  var seen={};
+  var options=items.map(function(item){
+    var value=String(valueOf(item)||'').trim();
+    if(!value || seen[value]) return '';
+    seen[value]=true;
+    return '<option value="'+escapeHtml(value)+'">'+escapeHtml(labelOf(item)||value)+'</option>';
+  }).join('');
+  select.innerHTML=first+options;
+}
+async function loadAdminJobFilters(){
+  var bar=document.getElementById('adminJobFilters');
+  if(!jobIsAdmin || !bar) return;
+  bar.hidden=false;
+  var responses=await Promise.allSettled([
+    fetch('/api/v1/account/users',{cache:'no-store'}),
+    fetch('/api/v1/account/teams',{cache:'no-store'}),
+    App.apiFetch('/api/v1/slurm/partitions',{cache:'no-store'})
+  ]);
+  var payloads=await Promise.all(responses.map(async function(result){
+    if(result.status!=='fulfilled' || !result.value.ok) return [];
+    var data=await result.value.json().catch(function(){return {}});
+    return Array.isArray(data)?data:(data.items||[]);
+  }));
+  fillJobFilter(document.getElementById('jobUserFilter'),payloads[0],function(item){return item.username},function(item){return item.displayName ? item.username+'（'+item.displayName+'）' : item.username});
+  fillJobFilter(document.getElementById('jobGroupFilter'),payloads[1],function(item){return item.groupName||item.name},function(item){return item.groupName && item.groupName!==item.name ? item.name+'（'+item.groupName+'）' : (item.name||item.groupName)});
+  fillJobFilter(document.getElementById('jobPartitionFilter'),payloads[2],function(item){return item.name||item.partition},function(item){return item.name||item.partition});
+}
+document.addEventListener('DOMContentLoaded',function(){
+  document.getElementById('jobFilter')?.addEventListener('change',resetAndRenderJobList);
+  ['jobUserFilter','jobGroupFilter','jobPartitionFilter'].forEach(function(id){
+    document.getElementById(id)?.addEventListener('change',resetAndRenderJobList);
+  });
+  document.getElementById('jobFilterReset')?.addEventListener('click',function(){
+    ['jobUserFilter','jobGroupFilter','jobPartitionFilter'].forEach(function(id){
+      var select=document.getElementById(id);
+      if(select) select.value='';
+    });
+    resetAndRenderJobList();
+  });
+  document.getElementById('globalSearch')?.addEventListener('input',function(){
+    clearTimeout(jobSearchTimer);
+    jobSearchTimer=setTimeout(resetAndRenderJobList,300);
+  });
+  loadAdminJobFilters();
+  loadJobListFromApi();
+  setInterval(function(){
+    if(document.visibilityState==='visible') loadJobListFromApi();
+  },10000);
+});
+</script>
+<script src="js/app.js?v=20260703profile"></script>
+</body></html>

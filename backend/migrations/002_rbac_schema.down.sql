@@ -1,0 +1,19 @@
+DROP TABLE IF EXISTS user_roles_v2;
+DROP TABLE IF EXISTS role_file_policies;
+DROP TABLE IF EXISTS role_data_scopes;
+DROP TABLE IF EXISTS role_permissions;
+DROP TABLE IF EXISTS menus;
+DROP TABLE IF EXISTS permissions;
+
+DROP INDEX IF EXISTS idx_roles_status;
+ALTER TABLE roles DROP CONSTRAINT IF EXISTS roles_status_check;
+ALTER TABLE roles DROP CONSTRAINT IF EXISTS roles_scope_type_check;
+ALTER TABLE roles DROP COLUMN IF EXISTS updated_at;
+ALTER TABLE roles DROP COLUMN IF EXISTS updated_by;
+ALTER TABLE roles DROP COLUMN IF EXISTS created_by;
+ALTER TABLE roles DROP COLUMN IF EXISTS version;
+ALTER TABLE roles DROP COLUMN IF EXISTS allow_permission_edit;
+ALTER TABLE roles DROP COLUMN IF EXISTS allow_delete;
+ALTER TABLE roles DROP COLUMN IF EXISTS is_builtin;
+ALTER TABLE roles DROP COLUMN IF EXISTS status;
+ALTER TABLE roles DROP COLUMN IF EXISTS description;

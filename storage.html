@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
+<title>simpleHPC — 存储配置</title>
+<link rel="stylesheet" href="css/theme.css?v=20260703profile">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-icon">S</div><span class="brand-name">simpleHPC</span></div>
+    <ul class="nav">
+      <li class="nav-group-toggle" data-submenu="overview">概览</li><li class="nav-submenu" id="submenu-overview">
+        <a class="nav-submenu-item" href="index.html">仪表盘</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="users">账户管理</li><li class="nav-submenu" id="submenu-users">
+        <a class="nav-submenu-item" href="units.html">单位管理</a>
+        <a class="nav-submenu-item" href="teams.html">团队管理</a>
+        <a class="nav-submenu-item" href="users.html">用户管理</a>
+        <a class="nav-submenu-item" href="admins.html">管理员账号管理</a>
+        <a class="nav-submenu-item" href="roles.html">角色管理</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="compute">计算管理</li><li class="nav-submenu" id="submenu-compute">
+        <a class="nav-submenu-item" href="partitions.html">资源队列配置</a>
+        <a class="nav-submenu-item" href="queue-status.html">队列状态</a>
+        <a class="nav-submenu-item" href="nodes.html">节点状态</a>
+        <a class="nav-submenu-item" href="qos.html">QOS 策略</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="data">数据管理</li><li class="nav-submenu" id="submenu-data">
+        <a class="nav-submenu-item" href="data.html">数据目录</a>
+        <a class="nav-submenu-item" href="data-acl.html">访问授权</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="jobs">作业中心</li><li class="nav-submenu" id="submenu-jobs">
+        <a class="nav-submenu-item" href="job-templates.html">作业模板</a>
+        <a class="nav-submenu-item" href="job-list.html">作业列表</a>
+        <a class="nav-submenu-item" href="vnc-desktop.html">VNC 桌面</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="ops">监控运维</li><li class="nav-submenu" id="submenu-ops">
+        <a class="nav-submenu-item" href="monitoring.html">监控告警</a>
+        <a class="nav-submenu-item" href="inspection.html">巡检报告</a>
+      </li>
+      <li class="nav-group-toggle expanded" data-submenu="system">系统</li><li class="nav-submenu expanded" id="submenu-system">
+        <a class="nav-submenu-item" href="settings.html">平台设置</a>
+        <a class="nav-submenu-item" href="ldap.html">LDAP 配置</a>
+        <a class="nav-submenu-item" href="slurm.html">Slurm 配置</a>
+        <a class="nav-submenu-item active" href="storage.html">存储配置</a>
+        <a class="nav-submenu-item" href="notify.html">通知配置</a>
+        <a class="nav-submenu-item" href="audit.html">审计日志</a>
+      </li>
+    </ul>
+    <div class="sidebar-user"><div class="avatar">管</div><div><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">管理员</div><div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">cluster-admin</div></div></div>
+  </aside>
+  <header class="header">
+    <h1 class="header-title">存储配置</h1>
+    <div class="header-actions">
+      <input class="search-field" placeholder="搜索..." id="globalSearch">
+      <button class="btn-icon" aria-label="通知" data-dropdown='{"html":"<div class=\"_shpc-dropdown-item\">通知消息</div><div class=\"_shpc-dropdown-item\"><span style=\"color:var(--success)\">●</span> 系统运行正常</div>","width":"240px","placement":"bottom-end"}'>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </button>
+      <div class="avatar" style="cursor:pointer;" data-dropdown='{"html":"&lt;a class=&quot;_shpc-dropdown-item&quot; href=&quot;users.html&quot;&gt;个人资料&lt;/a&gt;&lt;button type=&quot;button&quot; class=&quot;_shpc-dropdown-item&quot; style=&quot;width:100%;border:0;background:transparent;text-align:left;font:inherit&quot; onclick=&quot;App.openPasswordDrawer()&quot;&gt;修改密码&lt;/button&gt;&lt;div class=&quot;_shpc-dropdown-divider&quot;&gt;&lt;/div&gt;&lt;button type=&quot;button&quot; class=&quot;_shpc-dropdown-item&quot; style=&quot;width:100%;border:0;background:transparent;text-align:left;font:inherit;color:var(--danger)&quot; onclick=&quot;App.logout()&quot;&gt;退出登录&lt;/button&gt;","width":"160px","placement":"bottom-end"}'>管</div>
+    </div>
+  </header>
+  <main class="main">
+<div class="card"><div class="card-header"><div><div class="card-title">存储路径配置</div><div class="card-subtitle">配置用户主目录、集群共享目录、系统回收站和临时计算目录；保存后立即生效，并作为仪表盘存储目录展示来源。</div></div><button class="btn btn-primary" onclick="openStorageDrawer()">添加存储路径</button></div><div class="table-wrap"><table class="storage-config-table"><thead><tr><th>类型</th><th>名称</th><th>路径</th><th>文件系统</th><th>用途</th><th>用量</th><th>状态</th><th>操作</th></tr></thead><tbody id="storageRows"></tbody></table></div><div style="margin-top:18px;display:flex;gap:10px;align-items:center;"><button class="btn btn-primary" onclick="saveStorageConfig()">保存配置</button><span class="muted-small">保存后立即刷新后端存储路径配置，并启动/更新对应路径用量采集。</span></div></div>
+<template id="tplStorageForm"><div class="_shpc-form-grid"><div class="_shpc-field"><label>存储类型</label><select id="storageType"><option>用户主目录</option><option>集群共享目录</option><option>系统回收站</option><option>临时计算目录</option></select></div><div class="_shpc-field"><label>名称</label><input id="storageName" placeholder="如 用户主目录"></div><div class="_shpc-field _shpc-field-wide"><label>路径</label><input id="storagePath" placeholder="如 /data/home"></div><div class="_shpc-field"><label>文件系统</label><select id="storageFs"><option>NFS</option><option>GPFS</option><option>本地/并行存储</option><option>BeeGFS</option></select></div><div class="_shpc-field"><label>用途</label><input id="storagePurpose" placeholder="路径用途说明"></div><div class="_shpc-field"><label>告警阈值</label><input id="storageWarn" value="85%"></div></div><div class="notice-box"><strong>保存后立即生效</strong><span>后端会刷新系统配置、检查路径可访问性，并将该路径纳入存储用量采集；用户主目录将作为团队和用户默认家目录根路径。</span></div></template>    <div style="height:40px;"></div>
+  </main>
+</div>
+
+
+<script>
+var storageConfigs=[];
+function escapeHtml(value){
+  return String(value == null ? '' : value).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]});
+}
+function normalizeStorageRoot(root){
+  var path=root.path || root.mountPoint || root.root || '';
+  return {
+    type:root.type || inferStorageType(path),
+    name:root.name || inferStorageType(path),
+    path:path,
+    fs:root.fsType || root.fs || root.filesystem || '数据未获取',
+    purpose:root.purpose || '数据未获取',
+    warningThreshold:Number(root.warningThreshold)||85,
+    usage:Number.isFinite(Number(root.usagePercent)) ? Number(root.usagePercent) : null,
+    status:root.status || '正常'
+  };
+}
+function inferStorageType(path){
+  if(/home/i.test(path)) return '用户主目录';
+  if(/share|project/i.test(path)) return '集群共享目录';
+  if(/recycle|trash/i.test(path)) return '系统回收站';
+  if(/scratch|tmp/i.test(path)) return '临时计算目录';
+  return '存储目录';
+}
+function usageCell(item){
+  if(item.usage === null) return '<span class="api-data-missing"><strong>数据未获取</strong>：后端尚未返回容量用量字段</span>';
+  return '<div class="storage-mini-usage"><span>'+item.usage+'%</span><div class="metric-bar"><div class="metric-bar-fill '+(item.usage>=85?'danger':item.usage>=75?'warn':'success')+'" style="width:'+item.usage+'%"></div></div></div>';
+}
+function renderStorageConfig(){
+  var rows=document.getElementById('storageRows');
+  if(!storageConfigs.length){
+    rows.innerHTML='<tr><td colspan="8"><div class="api-data-missing"><strong>数据未获取</strong>：/api/v1/storage/roots 未返回存储路径配置。</div></td></tr>';
+    return;
+  }
+  rows.innerHTML=storageConfigs.map(function(item,idx){return '<tr><td>'+escapeHtml(item.type)+'</td><td>'+escapeHtml(item.name)+'</td><td><code>'+escapeHtml(item.path)+'</code></td><td>'+escapeHtml(item.fs)+'</td><td>'+escapeHtml(item.purpose)+'</td><td>'+usageCell(item)+'</td><td><span class="pill pill-success">'+escapeHtml(item.status)+'</span></td><td><button class="small-action" onclick="openStorageDrawer('+idx+')">编辑</button> <button class="small-action" onclick="refreshStorageUsage('+idx+')">刷新监控</button> <button class="small-action" onclick="removeStorageRoot('+idx+')">删除</button></td></tr>'}).join('');
+}
+async function refreshStorageUsage(index){
+  var item=storageConfigs[index];
+  try{
+    var res=await fetch('/api/v1/storage/roots/refresh',{method:'POST'});
+    var data=await res.json().catch(function(){return {};});
+    if(!res.ok) throw new Error(data.error||res.statusText||'刷新失败');
+    storageConfigs=(data.items||[]).map(normalizeStorageRoot).filter(function(entry){return entry.path;});
+    renderStorageConfig();
+    App.toast((item ? item.path : '存储路径') + ' 用量已重新采集','success');
+  }catch(error){App.toast('刷新监控失败：'+error.message,'danger');}
+}
+async function loadStorageConfig(){
+  try{
+    var res=await fetch('/api/v1/storage/roots',{cache:'no-store'});
+    var data=await res.json().catch(function(){return {};});
+    if(!res.ok) throw new Error(data.error || res.statusText || '接口请求失败');
+    var roots=Array.isArray(data) ? data : (data.items || data.roots || data.data || []);
+    storageConfigs=roots.map(normalizeStorageRoot).filter(function(item){return item.path;});
+  }catch(err){
+    storageConfigs=[];
+    var rows=document.getElementById('storageRows');
+    rows.innerHTML='<tr><td colspan="8"><div class="api-data-missing"><strong>数据未获取</strong>：/api/v1/storage/roots '+escapeHtml(err.message)+'</div></td></tr>';
+    return;
+  }
+  renderStorageConfig();
+}
+function openStorageDrawer(index){
+  var item=Number.isInteger(index)?storageConfigs[index]:null;
+  App.drawer({title:item?'编辑存储路径':'添加存储路径',width:'760px',content:document.getElementById('tplStorageForm').innerHTML,onSubmit:function(){
+    var next={type:document.getElementById('storageType').value,name:document.getElementById('storageName').value.trim(),path:document.getElementById('storagePath').value.trim(),fs:document.getElementById('storageFs').value,purpose:document.getElementById('storagePurpose').value.trim(),warningThreshold:Number(String(document.getElementById('storageWarn').value||85).replace('%',''))||85,usage:item?item.usage:null,status:'待保存'};
+    if(!next.path || next.path.charAt(0)!=='/'){App.toast('请输入绝对存储路径','warn');return;}
+    if(item) storageConfigs[index]=next; else storageConfigs.push(next);
+    renderStorageConfig();App.toast('路径已加入配置，请点击“保存配置”使其生效','info');
+  }});
+  if(item){document.getElementById('storageType').value=item.type;document.getElementById('storageName').value=item.name;document.getElementById('storagePath').value=item.path;document.getElementById('storageFs').value=item.fs;document.getElementById('storagePurpose').value=item.purpose;document.getElementById('storageWarn').value=item.warningThreshold+'%';}
+    var type=document.getElementById('storageType');var name=document.getElementById('storageName');var path=document.getElementById('storagePath');var purpose=document.getElementById('storagePurpose');
+    type?.addEventListener('change',function(){name.value=this.value;var defaults={'用户主目录':'/data/home','集群共享目录':'/data/share','系统回收站':'/data/recycle','临时计算目录':'/data/scratch'};var purposes={'用户主目录':'用户家目录和团队默认组目录','集群共享目录':'团队共享数据和项目目录','系统回收站':'删除账号家目录回收与保留','临时计算目录':'作业临时输入输出和高速缓存'};path.value=defaults[this.value]||'';purpose.value=purposes[this.value]||'';});
+}
+function removeStorageRoot(index){App.confirm('确认删除该存储路径配置？不会删除磁盘中的数据。',{danger:true,onConfirm:function(){storageConfigs.splice(index,1);renderStorageConfig();App.toast('路径已移除，请保存配置','warn');}});}
+async function saveStorageConfig(){
+  try{
+    var res=await fetch('/api/v1/storage/roots',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({roots:storageConfigs.map(function(item){return {type:item.type,name:item.name,path:item.path,fsType:item.fs,purpose:item.purpose,warningThreshold:Number(String(item.warningThreshold||85).replace('%',''))||85};})})});
+    var data=await res.json().catch(function(){return {};});if(!res.ok)throw new Error(data.error||res.statusText||'保存失败');
+    App.toast('存储配置已保存并立即生效','success');await loadStorageConfig();
+  }catch(err){App.toast(err.message,'danger');}
+}
+document.addEventListener('DOMContentLoaded',loadStorageConfig);
+</script>
+<script src="js/app.js?v=20260703profile"></script>
+</body>
+</html>

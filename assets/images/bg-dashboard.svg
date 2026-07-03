@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="720" viewBox="0 0 1920 720" role="img" aria-label="Light abstract cloud computing dashboard illustration">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset=".55" stop-color="#f6f9ff"/>
+      <stop offset="1" stop-color="#eef6ff"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5ac8fa"/>
+      <stop offset="1" stop-color="#0a84ff"/>
+    </linearGradient>
+    <linearGradient id="soft" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#eaf5ff"/>
+      <stop offset="1" stop-color="#ffffff"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#2563eb" flood-opacity=".10"/>
+    </filter>
+  </defs>
+  <rect width="1920" height="720" fill="url(#bg)"/>
+  <circle cx="1540" cy="84" r="220" fill="#dff1ff" opacity=".72"/>
+  <circle cx="1320" cy="610" r="260" fill="#eef2ff" opacity=".72"/>
+  <circle cx="1780" cy="520" r="180" fill="#e8f8ff" opacity=".95"/>
+  <g opacity=".28" stroke="#dbeafe" stroke-width="1">
+    <path d="M1080 120h620M1040 190h720M1130 260h530M1090 330h680M1010 400h640"/>
+  </g>
+  <g transform="translate(1060 142)" filter="url(#shadow)">
+    <rect x="0" y="40" width="154" height="274" rx="28" fill="#fff" stroke="#e5e7eb"/>
+    <rect x="190" y="0" width="154" height="314" rx="28" fill="#fff" stroke="#e5e7eb"/>
+    <rect x="380" y="58" width="154" height="256" rx="28" fill="#fff" stroke="#e5e7eb"/>
+    <g stroke="#d1d5db" stroke-width="5" stroke-linecap="round">
+      <path d="M38 102h78M38 152h78M38 202h78M38 252h78"/>
+      <path d="M228 62h78M228 112h78M228 162h78M228 212h78M228 262h78"/>
+      <path d="M418 118h78M418 168h78M418 218h78M418 268h78"/>
+    </g>
+    <g fill="#34c759">
+      <circle cx="118" cy="286" r="6"/>
+      <circle cx="308" cy="286" r="6"/>
+      <circle cx="498" cy="286" r="6"/>
+    </g>
+  </g>
+  <g transform="translate(1085 470)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M0 80c110-92 198-114 300-74 108 42 202 22 318-70" stroke="url(#blue)" stroke-width="9" opacity=".52"/>
+    <path d="M22 116c96-60 174-70 264-28 120 56 232 35 374-64" stroke="#34c759" stroke-width="7" opacity=".28"/>
+    <circle cx="300" cy="6" r="10" fill="#0a84ff" stroke="#fff" stroke-width="5"/>
+    <circle cx="618" cy="6" r="10" fill="#34c759" stroke="#fff" stroke-width="5"/>
+  </g>
+  <g transform="translate(1395 262)" filter="url(#shadow)">
+    <rect width="264" height="144" rx="30" fill="url(#soft)" stroke="#e5e7eb"/>
+    <path d="M50 92h164" stroke="#d1d5db" stroke-width="8" stroke-linecap="round"/>
+    <path d="M50 64h90" stroke="url(#blue)" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="214" cy="62" r="14" fill="#34c759" opacity=".82"/>
+  </g>
+</svg>

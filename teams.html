@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,"><title>simpleHPC — 团队管理</title><link rel="stylesheet" href="css/theme.css?v=20260703profile"></head>
+<body><div class="layout">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-icon">S</div><span class="brand-name">simpleHPC</span></div>
+    <ul class="nav">
+      <li class="nav-group-toggle" data-submenu="overview">概览</li><li class="nav-submenu" id="submenu-overview">
+        <a class="nav-submenu-item" href="index.html">仪表盘</a>
+      </li>
+      <li class="nav-group-toggle expanded" data-submenu="users">账户管理</li><li class="nav-submenu expanded" id="submenu-users">
+        <a class="nav-submenu-item" href="units.html">单位管理</a>
+        <a class="nav-submenu-item active" href="teams.html">团队管理</a>
+        <a class="nav-submenu-item" href="users.html">用户管理</a>
+        <a class="nav-submenu-item" href="admins.html">管理员账号管理</a>
+        <a class="nav-submenu-item" href="roles.html">角色管理</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="compute">计算管理</li><li class="nav-submenu" id="submenu-compute">
+        <a class="nav-submenu-item" href="partitions.html">资源队列配置</a>
+        <a class="nav-submenu-item" href="queue-status.html">队列状态</a>
+        <a class="nav-submenu-item" href="nodes.html">节点状态</a>
+        <a class="nav-submenu-item" href="qos.html">QOS 策略</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="data">数据管理</li><li class="nav-submenu" id="submenu-data">
+        <a class="nav-submenu-item" href="data.html">数据目录</a>
+        <a class="nav-submenu-item" href="data-acl.html">访问授权</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="jobs">作业中心</li><li class="nav-submenu" id="submenu-jobs">
+        <a class="nav-submenu-item" href="job-templates.html">作业模板</a>
+        <a class="nav-submenu-item" href="job-list.html">作业列表</a>
+        <a class="nav-submenu-item" href="vnc-desktop.html">VNC 桌面</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="ops">监控运维</li><li class="nav-submenu" id="submenu-ops">
+        <a class="nav-submenu-item" href="monitoring.html">监控告警</a>
+        <a class="nav-submenu-item" href="inspection.html">巡检报告</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="system">系统</li><li class="nav-submenu" id="submenu-system">
+        <a class="nav-submenu-item" href="settings.html">平台设置</a>
+        <a class="nav-submenu-item" href="ldap.html">LDAP 配置</a>
+        <a class="nav-submenu-item" href="slurm.html">Slurm 配置</a>
+        <a class="nav-submenu-item" href="storage.html">存储配置</a>
+        <a class="nav-submenu-item" href="notify.html">通知配置</a>
+        <a class="nav-submenu-item" href="audit.html">审计日志</a>
+      </li>
+    </ul>
+    <div class="sidebar-user"><div class="avatar">管</div><div><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">管理员</div><div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">cluster-admin</div></div></div>
+  </aside>
+  <header class="header"><h1 class="header-title">团队管理</h1><div class="header-actions">
+      <input class="search-field" placeholder="搜索..." id="globalSearch">
+      <button class="btn-icon" aria-label="通知" data-dropdown='{"html":"<div class=\"_shpc-dropdown-item\">通知消息</div><div class=\"_shpc-dropdown-item\"><span style=\"color:var(--success)\">●</span> 邮件服务与 LDAP 同步正常</div>","width":"260px","placement":"bottom-end"}'>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </button>
+      <div class="avatar" style="cursor:pointer;" data-dropdown='{"html":"<a class=\"_shpc-dropdown-item\" href=\"users.html\">个人资料</a><button type=\"button\" class=\"_shpc-dropdown-item\" style=\"width:100%;border:0;background:transparent;text-align:left;font:inherit\" onclick=\"App.openPasswordDrawer()\">修改密码</button><div class=\"_shpc-dropdown-divider\"></div><button type=\"button\" class=\"_shpc-dropdown-item\" style=\"width:100%;border:0;background:transparent;text-align:left;font:inherit;color:var(--danger)\" onclick=\"App.logout()\">退出登录</button>","width":"160px","placement":"bottom-end"}'>管</div>
+    </div></header>
+  <main class="main">
+
+<div class="card" style="border-left:4px solid var(--accent);"><div class="card-title">团队账号同步规则</div><div class="card-subtitle">新建团队会同步创建 LDAP group、组长 LDAP 账号和项目库团队记录；项目库不保存明文密码，账号开通和重置密码均通过邮箱一次性通知。</div></div>
+<div class="card"><div class="card-header"><div><div class="card-title">组织（团队）管理</div><div class="card-subtitle">新建、编辑、冻结、删除团队；管理组长、组长助理和组员账号状态。</div></div><button class="btn btn-primary" onclick="openTeamDrawer()">新建团队</button></div>
+  <div class="table-wrap"><table class="team-table"><thead><tr><th><input type="checkbox" aria-label="全选团队" onchange="toggleTeamRows(this.checked)"></th><th>团队名称</th><th>组名称</th><th>单位</th><th>组长</th><th>成员</th><th>资源策略</th><th>状态</th><th>操作</th></tr></thead><tbody>
+    <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:28px;">正在获取后端团队数据...</td></tr>
+  </tbody></table></div></div>
+<div class="card"><div class="card-title">账号操作规则</div><div class="ops-rule-grid"><div><strong>冻结账号</strong><span>清理登录节点中该用户正在运行的进程并禁止登录；普通用户提示联系组长或组长助理，组长账号提示联系集群管理员。</span></div><div><strong>重置密码</strong><span>生成 18 位随机数字和大小写字母组合，邮件发送给用户邮箱；页面只显示一次新密码，不写入系统日志。</span></div><div><strong>删除账号</strong><span>清理 LDAP 信息并删除用户家目录；项目数据库保留账号记录，状态标记为账号已注销，用于作业历史和机时对账。</span></div></div></div>
+<template id="tplTeamForm"><div class="_shpc-form-grid team-form"><div class="_shpc-field"><label>团队名称</label><input id="teamNameInput" placeholder="请输入团队名称"></div><div class="_shpc-field"><label>组名称</label><input id="teamGroupInput" placeholder="默认与团队名称一致"></div><div class="_shpc-field"><label>单位编码或名称</label><input id="teamUnitInput"></div><div class="_shpc-field"><label>组长账号</label><input id="leaderAccountInput"></div><div class="_shpc-field"><label>资源策略</label><input id="teamPolicyInput"></div></div></template>
+<template id="tplTeamCreateWizard">
+  <div class="team-create-wizard">
+    <div style="display:flex;gap:12px;margin-bottom:18px;">
+      <div class="wizard-step-marker active" data-step-marker="1"><strong>1</strong><span>创建用户组</span></div>
+      <div class="wizard-step-marker" data-step-marker="2"><strong>2</strong><span>创建组长首用户</span></div>
+    </div>
+    <section data-wizard-step="1">
+      <div class="notice-box" style="margin-bottom:16px;"><strong>创建规则</strong><span>新建用户组必须同时创建组长账号；组长会作为该用户组的第一个用户写入 LDAP 和项目库。</span></div>
+      <div class="_shpc-form-grid team-form">
+        <div class="_shpc-field"><label>团队名称</label><input id="wizardTeamName" placeholder="例如：高鸿祥组"></div>
+        <div class="_shpc-field"><label>LDAP 组名称</label><input id="wizardGroupName" placeholder="默认与团队名称一致"></div>
+        <div class="_shpc-field"><label>单位</label><select id="wizardUnit"><option value="">正在读取已创建单位...</option></select></div>
+        <div class="_shpc-field"><label>资源策略</label><select id="wizardPolicy"><option value="">正在读取 QOS 策略...</option></select></div>
+      </div>
+      <div class="section-title" style="margin-top:18px;">组存储目录授权</div>
+      <div class="notice-box" style="margin-bottom:12px;"><strong>授权说明</strong><span>选择已配置存储根目录后，系统会在创建流程中为新 LDAP 组写入 group ACL。授权失败时用户组和组长创建会回滚。</span></div>
+      <div class="table-wrap"><table class="team-storage-grant-table"><thead><tr><th>开通授权</th><th>存储名称</th><th>授权路径</th><th>权限</th></tr></thead><tbody id="wizardStorageGrants"><tr><td colspan="4" style="color:var(--muted);padding:16px;">正在读取存储目录...</td></tr></tbody></table></div>
+      <div class="section-title" style="margin-top:18px;">资源策略默认绑定</div>
+      <div class="notice-box"><strong>默认策略</strong><span>资源策略名称会随用户组保存；后续成员默认继承该组资源策略。</span></div>
+    </section>
+    <section data-wizard-step="2" style="display:none;">
+      <div class="notice-box" style="margin-bottom:16px;"><strong>组长账号</strong><span>用户组：<code id="wizardGroupPreview">-</code>；角色固定为组长，并自动绑定 team_admin 团队作用域权限。</span></div>
+      <div class="_shpc-form-grid team-form">
+        <div class="_shpc-field"><label>用户组</label><input id="wizardLeaderTeamLocked" disabled value="待选择"></div>
+        <div class="_shpc-field"><label>角色</label><input id="wizardLeaderRoleLocked" disabled value="组长 / team_admin"></div>
+        <div class="_shpc-field"><label>组长姓名</label><input id="wizardLeaderName" placeholder="请输入姓名"></div>
+        <div class="_shpc-field"><label>组长账号</label><input id="wizardLeaderUsername" placeholder="请输入账号"></div>
+        <div class="_shpc-field"><label>邮箱</label><input id="wizardLeaderEmail" placeholder="name@example.edu.cn"></div>
+        <div class="_shpc-field"><label>用户主目录</label><input id="wizardLeaderHome" placeholder="默认 /data/home/账号"></div>
+      </div>
+    </section>
+  </div>
+</template>    <div style="height:40px;"></div>
+  </main>
+</div>
+<script>
+function teamEscapeHTML(value){
+  return String(value == null ? '' : value)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+function teamJSArg(value){
+  return teamEscapeHTML(JSON.stringify(String(value == null ? '' : value)));
+}
+function memberStatusPill(status){
+  var normalized=String(status||'active').toLowerCase();
+  if(normalized==='active'||normalized==='normal'||normalized==='enabled') return '<span class="pill pill-success">正常</span>';
+  if(normalized==='frozen'||normalized==='disabled'||normalized==='locked') return '<span class="pill pill-warn">冻结</span>';
+  if(normalized==='deleted'||normalized==='cancelled') return '<span class="pill pill-danger">已注销</span>';
+  return '<span class="pill pill-info">'+teamEscapeHTML(status||'未知')+'</span>';
+}
+function toggleTeamRows(checked){
+  document.querySelectorAll('.team-table .batch-row').forEach(function(input){ input.checked=checked; });
+}
+async function openTeamDrawer(teamName){
+  if(!teamName) return openTeamCreateWizard();
+  var existing=null;
+  if(teamName){try{var list=await fetch('/api/v1/account/teams').then(function(r){return r.json()});existing=(list.items||[]).find(function(item){return item.name===teamName||item.groupName===teamName})||null;}catch(error){return App.toast(error.message,'danger');}}
+  App.drawer({title:teamName?'编辑团队':'新建团队',width:'760px',content:document.getElementById('tplTeamForm').innerHTML,onSubmit:async function(){
+    try{
+      var url=teamName?'/api/v1/account/teams/'+encodeURIComponent(teamName):'/api/v1/account/teams';var method=teamName?'PUT':'POST';
+      var res=await fetch(url,{method:method,headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('teamNameInput').value,groupName:document.getElementById('teamGroupInput').value,unit:document.getElementById('teamUnitInput').value,leaderUsername:document.getElementById('leaderAccountInput').value,resourcePolicy:document.getElementById('teamPolicyInput').value})});
+      var data=await res.json().catch(function(){return {}});if(!res.ok)throw new Error(data.error||(teamName?'更新失败':'创建失败'));App.toast(teamName?'团队信息已更新':'团队已创建并同步 LDAP','success');location.reload();
+    }catch(error){App.toast(error.message,'danger');}
+  }});
+  initTeamForm(teamName);
+  if(existing){document.getElementById('teamNameInput').value=existing.name||'';document.getElementById('teamGroupInput').value=existing.groupName||'';document.getElementById('teamGroupInput').disabled=true;document.getElementById('teamUnitInput').value=existing.unit||'';document.getElementById('leaderAccountInput').value=existing.leaderUsername||'';document.getElementById('teamPolicyInput').value=existing.resourcePolicy||'';}
+}
+function openTeamCreateWizard(){
+  var currentStep=1;
+  var drawerRef=App.drawer({
+    title:'新建用户组向导',
+    width:'920px',
+    content:document.getElementById('tplTeamCreateWizard').innerHTML,
+    footerHtml:'<button class="btn btn-ghost _shpc-drawer-btn-close">取消</button><button class="btn btn-ghost" id="teamWizardPrev" style="display:none;">上一步</button><button class="btn btn-primary" id="teamWizardNext">下一步：创建组长</button><button class="btn btn-primary" id="teamWizardSubmit" style="display:none;">创建用户组和组长</button>'
+  });
+  var root=drawerRef.el;
+  function value(id){return root.querySelector('#'+id)?.value.trim()||'';}
+  function storageGrants(){
+    return Array.from(root.querySelectorAll('[data-storage-grant-row]')).map(function(row){
+      return {
+        enabled: !!row.querySelector('[data-storage-enabled]')?.checked,
+        path: row.querySelector('[data-storage-path]')?.value.trim()||'',
+        permission: row.querySelector('[data-storage-permission]')?.value||'rwx'
+      };
+    }).filter(function(item){return item.enabled;});
+  }
+  function setStep(step){
+    currentStep=step;
+    root.querySelectorAll('[data-wizard-step]').forEach(function(el){el.style.display=el.dataset.wizardStep===String(step)?'':'none';});
+    root.querySelectorAll('[data-step-marker]').forEach(function(el){el.classList.toggle('active',el.dataset.stepMarker===String(step));el.classList.toggle('done',Number(el.dataset.stepMarker)<step);});
+    root.querySelector('#teamWizardPrev').style.display=step===2?'':'none';
+    root.querySelector('#teamWizardNext').style.display=step===1?'':'none';
+    root.querySelector('#teamWizardSubmit').style.display=step===2?'':'none';
+    if(step===2){
+      var groupLabel=value('wizardTeamName')+'（'+(value('wizardGroupName')||value('wizardTeamName'))+'）';
+      root.querySelector('#wizardGroupPreview').textContent=groupLabel||'-';
+      root.querySelector('#wizardLeaderTeamLocked').value=groupLabel||'待选择';
+    }
+  }
+  function validateStep1(){
+    if(!value('wizardTeamName')) throw new Error('团队名称不能为空');
+    if(!value('wizardUnit')) throw new Error('请选择已创建的用户单位');
+  }
+  function validateStep2(){
+    if(!value('wizardLeaderName')) throw new Error('组长姓名不能为空');
+    if(!value('wizardLeaderUsername')) throw new Error('组长账号不能为空');
+    if(!value('wizardLeaderEmail')||value('wizardLeaderEmail').indexOf('@')<0) throw new Error('组长邮箱格式不正确');
+  }
+  root.querySelector('#wizardTeamName').addEventListener('input',function(){var group=root.querySelector('#wizardGroupName');if(!group.dataset.touched) group.value=this.value.trim();});
+  root.querySelector('#wizardGroupName').addEventListener('input',function(){this.dataset.touched='true';});
+  root.querySelector('#wizardLeaderUsername').addEventListener('input',function(){var home=root.querySelector('#wizardLeaderHome');if(!home.dataset.touched) home.value=this.value.trim()?'/data/home/'+this.value.trim():'';});
+  root.querySelector('#wizardLeaderHome').addEventListener('input',function(){this.dataset.touched='true';});
+  Promise.allSettled([
+    fetch('/api/v1/account/units',{cache:'no-store'}).then(function(res){return res.json().then(function(data){if(!res.ok)throw new Error(data.error||'单位列表读取失败');return data;});}),
+    fetch('/api/v1/slurm/qos',{cache:'no-store'}).then(function(res){return res.json().then(function(data){if(!res.ok)throw new Error(data.error||'QOS 策略读取失败');return data;});})
+  ]).then(function(results){
+    var unitSelect=root.querySelector('#wizardUnit');
+    var qosSelect=root.querySelector('#wizardPolicy');
+    if(results[0].status==='fulfilled'){
+      var units=(results[0].value.items||[]).filter(function(item){return String(item.status||'active').toLowerCase()!=='deleted';});
+      unitSelect.innerHTML='<option value="">请选择已创建单位</option>'+units.map(function(item){
+        var value=item.code||item.name||'';
+        var label=(item.name||value)+(item.code&&item.code!==item.name?'（'+item.code+'）':'');
+        return '<option value="'+teamEscapeHTML(value)+'">'+teamEscapeHTML(label)+'</option>';
+      }).join('');
+      if(!units.length) unitSelect.innerHTML='<option value="">暂无已创建单位，请先到单位管理中创建</option>';
+    }else{
+      unitSelect.innerHTML='<option value="">单位列表读取失败，请刷新重试</option>';
+      App.toast(results[0].reason&&results[0].reason.message||'单位列表读取失败','danger',5000);
+    }
+    if(results[1].status==='fulfilled'){
+      var qos=(results[1].value.qos||[]).filter(function(item){return item&&item.name;});
+      qosSelect.innerHTML='<option value="">不绑定默认 QOS 策略</option>'+qos.map(function(item){
+        var desc=item.description?' - '+item.description:'';
+        return '<option value="'+teamEscapeHTML(item.name)+'">'+teamEscapeHTML(item.name+desc)+'</option>';
+      }).join('');
+      if(!qos.length) qosSelect.innerHTML='<option value="">暂无可用 QOS 策略</option>';
+    }else{
+      qosSelect.innerHTML='<option value="">QOS 策略读取失败</option>';
+      App.toast(results[1].reason&&results[1].reason.message||'QOS 策略读取失败','danger',5000);
+    }
+  });
+  fetch('/api/v1/storage/roots',{cache:'no-store'}).then(function(res){return res.json().then(function(data){if(!res.ok)throw new Error(data.error||'存储目录读取失败');return data;});}).then(function(data){
+    var rows=(data.items||[]).map(function(item,index){
+      var path=item.effectivePath||item.path||'';
+      return '<tr data-storage-grant-row><td><input type="checkbox" data-storage-enabled '+(index===0?'checked':'')+'></td><td>'+teamEscapeHTML(item.name||item.fsType||path)+'</td><td><input data-storage-path value="'+teamEscapeHTML(path)+'" placeholder="授权路径"></td><td><select data-storage-permission><option value="rwx">rwx 管理</option><option value="rw">rw 读写</option><option value="r">r 只读</option></select></td></tr>';
+    }).join('');
+    root.querySelector('#wizardStorageGrants').innerHTML=rows||'<tr><td colspan="4" style="color:var(--muted);padding:16px;">暂无可授权存储目录</td></tr>';
+  }).catch(function(error){
+    root.querySelector('#wizardStorageGrants').innerHTML='<tr><td colspan="4" style="color:var(--danger);padding:16px;">存储目录读取失败：'+teamEscapeHTML(error.message)+'</td></tr>';
+  });
+  root.querySelector('#teamWizardPrev').addEventListener('click',function(){setStep(1);});
+  root.querySelector('#teamWizardNext').addEventListener('click',function(){try{validateStep1();setStep(2);}catch(error){App.toast(error.message,'danger');}});
+  root.querySelector('#teamWizardSubmit').addEventListener('click',async function(){
+    try{
+      validateStep1();validateStep2();
+      this.disabled=true;
+      var groupName=value('wizardGroupName')||value('wizardTeamName');
+      var payload={team:{name:value('wizardTeamName'),groupName:groupName,unit:value('wizardUnit'),leaderUsername:value('wizardLeaderUsername'),resourcePolicy:value('wizardPolicy')},leader:{username:value('wizardLeaderUsername'),displayName:value('wizardLeaderName'),email:value('wizardLeaderEmail'),unit:value('wizardUnit'),team:groupName,homeDirectory:value('wizardLeaderHome')},storageGrants:storageGrants()};
+      var res=await fetch('/api/v1/account/teams/create-with-leader',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      var data=await res.json().catch(function(){return {};});
+      if(!res.ok) throw new Error(data.error||'创建失败');
+      drawerRef.close();
+      App.modal({title:'用户组和组长已创建',width:'620px',content:'<div class="one-time-password"><span>组长初始密码仅显示一次</span><code>'+teamEscapeHTML(data.leader&&data.leader.password||'数据未获取')+'</code></div><p class="muted-small">团队 '+teamEscapeHTML(data.team&&data.team.name||payload.team.name)+' 已创建；组长 '+teamEscapeHTML(payload.leader.username)+' 是该用户组第一个用户，并已绑定组长权限。</p>',showFooter:false});
+      setTimeout(function(){location.reload();},1200);
+    }catch(error){this.disabled=false;App.toast(error.message,'danger',5000);}
+  });
+  setStep(1);
+}
+function initTeamForm(teamName){
+  var teamInput=document.getElementById('teamNameInput');
+  var groupInput=document.getElementById('teamGroupInput');
+  var noInput=document.getElementById('leaderNoInput');
+  var accountInput=document.getElementById('leaderAccountInput');
+  var emailInput=document.getElementById('leaderEmailInput');
+  var homeInput=document.getElementById('teamHomeInput');
+  if(teamName){
+    teamInput.value=teamName;
+    groupInput.value=teamName;
+  }
+  teamInput?.addEventListener('input',function(){ if(!groupInput.dataset.touched) groupInput.value=this.value.trim(); });
+  groupInput?.addEventListener('input',function(){ this.dataset.touched='true'; });
+  noInput?.addEventListener('input',function(){ accountInput.value=this.value.trim(); homeInput.value=this.value.trim()?'/data/home/'+this.value.trim():''; if(!emailInput.value && this.value.trim()) emailInput.placeholder=this.value.trim()+'@example.edu.cn'; });
+  accountInput?.addEventListener('input',function(){ homeInput.value=this.value.trim()?'/data/home/'+this.value.trim():''; });
+}
+function openAddMemberDrawer(teamName){
+  App.drawer({title:'新增成员 - '+teamName,width:'760px',content:'<div class="_shpc-form-grid"><div class="_shpc-field"><label>账号</label><input id="memberAccount"></div><div class="_shpc-field"><label>姓名</label><input id="memberName"></div><div class="_shpc-field"><label>邮箱</label><input id="memberEmail"></div><div class="_shpc-field"><label>单位</label><input id="memberUnit"></div><div class="_shpc-field"><label>用户主目录</label><input id="memberHome"></div></div>',onSubmit:async function(){try{var res=await fetch('/api/v1/account/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('memberAccount').value,displayName:document.getElementById('memberName').value,email:document.getElementById('memberEmail').value,unit:document.getElementById('memberUnit').value,team:teamName,homeDirectory:document.getElementById('memberHome').value})});var data=await res.json().catch(function(){return {}});if(!res.ok)throw new Error(data.error||'创建失败');App.modal({title:'成员创建成功',content:'<div class="one-time-password"><span>初始密码仅显示一次</span><code>'+teamEscapeHTML(data.password||'数据未获取')+'</code></div>',showFooter:false});}catch(error){App.toast(error.message,'danger');}}})
+}
+async function openTeamMembers(teamName){
+  App.toast('正在获取团队成员数据...','info');
+  try{
+    var res=await fetch('/api/v1/account/teams/'+encodeURIComponent(teamName)+'/members');
+    var data=await res.json().catch(function(){return {};});
+    if(!res.ok) throw new Error(data.error||('HTTP '+res.status));
+    var items=Array.isArray(data.items)?data.items:[];
+    var body=items.length?items.map(function(item){
+      var username=item.username||'数据未获取';
+      var escapedUsername=teamEscapeHTML(username);
+      var role=item.role||'组员';
+      var accountArg=teamJSArg(username);
+      var roleArg=teamJSArg(role);
+      var teamArg=teamJSArg(teamName);
+      var frozen=['frozen','disabled','locked'].indexOf(String(item.status||'').toLowerCase())>=0;
+      var stateAction=frozen
+        ? '<button class="small-action" onclick=\'confirmUnfreezeMember('+accountArg+','+teamArg+')\'>解冻</button>'
+        : '<button class="small-action" onclick=\'confirmFreezeMember('+accountArg+','+roleArg+','+teamArg+')\'>冻结</button>';
+      var actions=item.leader
+        ? '<button class="small-action" onclick=\'resetMemberPassword('+accountArg+')\'>重置密码</button> <span class="muted-small">组长账号</span>'
+        : stateAction+' <button class="small-action" onclick=\'resetMemberPassword('+accountArg+')\'>重置密码</button> <button class="small-action" onclick=\'confirmDeleteMember('+accountArg+','+teamArg+')\'>删除</button>';
+      return '<tr><td>'+teamEscapeHTML(item.uidNumber||'数据未获取')+'</td><td><code>'+escapedUsername+'</code></td><td>'+teamEscapeHTML(item.displayName||item.username||'数据未获取')+'</td><td>'+teamEscapeHTML(item.email||'数据未获取')+'</td><td>'+teamEscapeHTML(role)+'</td><td>'+memberStatusPill(item.status)+'</td><td>'+actions+'</td></tr>';
+    }).join(''):'<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:28px;">后端暂无团队成员数据</td></tr>';
+    App.modal({title:'成员列表 - '+teamEscapeHTML(teamName),width:'1080px',content:'<div class="member-rule-note">成员数据来自后端 API：<code>/api/v1/account/teams/'+teamEscapeHTML(teamName)+'/members</code>。组长和组长助理的权限限制由后端账号操作接口最终校验。</div><div class="table-wrap"><table><thead><tr><th>学工号</th><th>账号</th><th>姓名</th><th>邮箱</th><th>角色</th><th>状态</th><th>操作</th></tr></thead><tbody>'+body+'</tbody></table></div>',showFooter:false});
+  }catch(err){
+    App.modal({title:'成员列表 - '+teamEscapeHTML(teamName),width:'760px',content:'<div class="notice-box"><strong>数据未获取</strong><span>'+teamEscapeHTML(err.message)+'</span></div>',showFooter:false});
+  }
+}
+function confirmFreezeTeam(name){App.confirm('确认冻结 '+name+'？系统将禁止该团队成员登录。',{danger:true,onConfirm:async function(){try{var res=await fetch('/api/v1/account/teams/'+encodeURIComponent(name)+'/freeze',{method:'POST'});var data=await res.json().catch(function(){return {}});if(!res.ok)throw new Error(data.error||'冻结失败');App.toast('团队及成员账号已冻结','warn');location.reload();}catch(error){App.toast(error.message,'danger');}}})}
+function confirmDeleteTeam(name){App.confirm('确认删除 '+name+'？只有没有成员的团队可以删除。',{danger:true,onConfirm:async function(){try{var res=await fetch('/api/v1/account/teams/'+encodeURIComponent(name),{method:'DELETE'});var data=await res.json().catch(function(){return {}});if(!res.ok)throw new Error(data.error||'删除失败');App.toast('团队和 LDAP group 已删除','success');location.reload();}catch(error){App.toast(error.message,'danger');}}})}
+async function accountOperation(account,action,method){
+  var res=await fetch('/api/v1/account/users/'+encodeURIComponent(account)+'/'+action,{method:method||'POST'});
+  var data=await res.json().catch(function(){return {};});
+  if(!res.ok) throw new Error(data.error||('HTTP '+res.status));
+  return data.result||{};
+}
+async function accountDelete(account){
+  var res=await fetch('/api/v1/account/users/'+encodeURIComponent(account),{method:'DELETE'});
+  var data=await res.json().catch(function(){return {};});
+  if(!res.ok) throw new Error(data.error||('HTTP '+res.status));
+  return data.result||{};
+}
+function confirmFreezeMember(account,role,teamName){
+  App.confirm('确认冻结账号 '+account+'？将禁止用户登录。'+(role==='组长'?'组长账号冻结提示联系集群管理员。':'用户登录时提示联系组长或组长助理。'),{danger:true,onConfirm:async function(){
+    try{await accountOperation(account,'freeze');App.toast('账号已冻结，LDAP 登录已禁用','warn');if(teamName) setTimeout(function(){openTeamMembers(teamName)},250);}
+    catch(err){App.toast('冻结失败：'+err.message,'danger',5000);}
+  }})
+}
+function confirmUnfreezeMember(account,teamName){
+  App.confirm('确认解冻账号 '+account+'？解冻后用户可重新登录。',{onConfirm:async function(){
+    try{await accountOperation(account,'unfreeze');App.toast('账号已解冻','success');if(teamName) setTimeout(function(){openTeamMembers(teamName)},250);}
+    catch(err){App.toast('解冻失败：'+err.message,'danger',5000);}
+  }})
+}
+async function resetMemberPassword(account){
+  try{
+    var result=await accountOperation(account,'reset-password');
+    var pwd=result.password||'数据未获取';
+    App.modal({title:'密码已重置：'+teamEscapeHTML(account),width:'520px',content:'<div class="one-time-password"><span>新密码仅显示一次</span><code>'+teamEscapeHTML(pwd)+'</code></div><p class="muted-small">LDAP 密码已更新；请立即发送给用户或确认系统邮箱通知链路。关闭后页面不再显示。</p>',showFooter:false});
+  }catch(err){App.toast('重置密码失败：'+err.message,'danger',5000);}
+}
+function confirmDeleteMember(account,teamName){
+  App.confirm('确认删除账号 '+account+'？将删除 LDAP 信息；项目数据库保留账号记录，状态标记为账号已注销。',{danger:true,onConfirm:async function(){
+    try{await accountDelete(account);App.toast('账号已注销，历史作业与机时记录已保留','warn');if(teamName) setTimeout(function(){openTeamMembers(teamName)},250);}
+    catch(err){App.toast('删除失败：'+err.message,'danger',5000);}
+  }})
+}
+window.openTeamDrawer=openTeamDrawer;
+window.openAddMemberDrawer=openAddMemberDrawer;
+window.openTeamMembers=openTeamMembers;
+window.confirmFreezeTeam=confirmFreezeTeam;
+window.confirmDeleteTeam=confirmDeleteTeam;
+window.confirmFreezeMember=confirmFreezeMember;
+window.confirmUnfreezeMember=confirmUnfreezeMember;
+window.resetMemberPassword=resetMemberPassword;
+window.confirmDeleteMember=confirmDeleteMember;
+</script>
+<script src="js/app.js?v=20260703profile"></script><script src="js/account-pages.js?v=20260626g"></script></body></html>

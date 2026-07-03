@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
+<title>simpleHPC — 仪表盘</title>
+<link rel="stylesheet" href="css/theme.css?v=20260703flicker">
+<link rel="stylesheet" href="css/effects.css?v=20260702sample">
+</head>
+<body class="shpc-sample-page shpc-dashboard-page">
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-icon">S</div><span class="brand-name">simpleHPC</span></div>
+    <ul class="nav">
+      <li class="nav-group-toggle expanded" data-submenu="overview">概览</li><li class="nav-submenu expanded" id="submenu-overview">
+        <a class="nav-submenu-item active" href="index.html">仪表盘</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="users">账户管理</li><li class="nav-submenu" id="submenu-users">
+        <a class="nav-submenu-item" href="units.html">单位管理</a>
+        <a class="nav-submenu-item" href="teams.html">团队管理</a>
+        <a class="nav-submenu-item" href="users.html">用户管理</a>
+        <a class="nav-submenu-item" href="admins.html">管理员账号管理</a>
+        <a class="nav-submenu-item" href="roles.html">角色管理</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="compute">计算管理</li><li class="nav-submenu" id="submenu-compute">
+        <a class="nav-submenu-item" href="partitions.html">资源队列配置</a>
+        <a class="nav-submenu-item" href="queue-status.html">队列状态</a>
+        <a class="nav-submenu-item" href="nodes.html">节点状态</a>
+        <a class="nav-submenu-item" href="qos.html">QOS 策略</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="data">数据管理</li><li class="nav-submenu" id="submenu-data">
+        <a class="nav-submenu-item" href="data.html">数据目录</a>
+        <a class="nav-submenu-item" href="data-acl.html">访问授权</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="jobs">作业中心</li><li class="nav-submenu" id="submenu-jobs">
+        <a class="nav-submenu-item" href="job-templates.html">作业模板</a>
+        <a class="nav-submenu-item" href="job-list.html">作业列表</a>
+        <a class="nav-submenu-item" href="vnc-desktop.html">VNC 桌面</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="ops">监控运维</li><li class="nav-submenu" id="submenu-ops">
+        <a class="nav-submenu-item" href="monitoring.html">监控告警</a>
+        <a class="nav-submenu-item" href="inspection.html">巡检报告</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="system">系统</li><li class="nav-submenu" id="submenu-system">
+        <a class="nav-submenu-item" href="settings.html">平台设置</a>
+        <a class="nav-submenu-item" href="ldap.html">LDAP 配置</a>
+        <a class="nav-submenu-item" href="slurm.html">Slurm 配置</a>
+        <a class="nav-submenu-item" href="storage.html">存储配置</a>
+        <a class="nav-submenu-item" href="notify.html">通知配置</a>
+        <a class="nav-submenu-item" href="audit.html">审计日志</a>
+      </li>
+    </ul>
+    <div class="sidebar-user"><div class="avatar">管</div><div><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">管理员</div><div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">cluster-admin</div></div></div>
+  </aside>
+
+  <header class="header">
+    <h1 class="header-title">仪表盘</h1>
+    <div class="header-actions">
+      <input type="text" class="search-field" placeholder="搜索用户、队列、节点...">
+      <button class="btn-icon" data-dropdown='{"html":"<div class=\"_shpc-dropdown-item\">通知消息</div><div class=\"_shpc-dropdown-item\">告警数据来自 dashboard_alerts</div><div class=\"_shpc-dropdown-item\"><a href=\"monitoring.html\" style=\"font-size:12px;color:var(--accent)\">查看全部 →</a></div>","width":"260px","placement":"bottom-end"}' aria-label="通知">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </button>
+      <button class="btn-icon" aria-label="刷新" onclick="window.simpleHPCRefreshDashboard ? window.simpleHPCRefreshDashboard() : location.reload()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+      </button>
+      <button class="btn btn-primary" id="dashboardEditBtn" onclick="toggleDashboardEdit()">编辑仪表盘</button>
+      <div class="avatar" style="cursor:pointer;" data-dropdown='{"html":"<a class=\"_shpc-dropdown-item\" href=\"users.html\">个人资料</a><button type=\"button\" class=\"_shpc-dropdown-item\" style=\"width:100%;border:0;background:transparent;text-align:left;font:inherit\" onclick=\"App.openPasswordDrawer()\">修改密码</button><div class=\"_shpc-dropdown-divider\"></div><button type=\"button\" class=\"_shpc-dropdown-item\" style=\"width:100%;border:0;background:transparent;text-align:left;font:inherit;color:var(--danger)\" onclick=\"App.logout()\">退出登录</button>","width":"160px","placement":"bottom-end"}'>管</div>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="shpc-tech-hero" aria-label="仪表盘视觉概览">
+      <div>
+        <span class="shpc-tech-hero-kicker"><img class="shpc-hero-icon" src="assets/icons/dashboard.svg" alt="">HPC CLUSTER COMMAND CENTER</span>
+        <h2>算力集群实时驾驶舱</h2>
+        <p>汇聚 Slurm 作业、计算资源、存储目录和告警状态，提供面向超算/智算中心的统一运营视图。当前样板只优化视觉层，不改变任何接口、权限和数据边界。</p>
+      </div>
+      <div class="shpc-hero-metrics" aria-hidden="true">
+        <div class="shpc-hero-metric"><strong>RBAC</strong><span>权限由 /api/v1/auth/me 动态驱动</span></div>
+        <div class="shpc-hero-metric"><strong>Slurm</strong><span>作业与队列状态真实回读</span></div>
+        <div class="shpc-hero-metric"><strong>Storage</strong><span>目录边界由后端返回控制</span></div>
+        <div class="shpc-hero-metric"><strong>Shadow</strong><span>enforce 前持续对照验证</span></div>
+      </div>
+    </section>
+
+    <div class="dashboard-toolbar" id="dashboardToolbar">
+      <div>
+        <div class="dashboard-toolbar-title">仪表盘布局编辑</div>
+        <div class="dashboard-toolbar-note">可调整卡片顺序、尺寸、显示内容与图表素材，保存后会固化到当前浏览器。</div>
+      </div>
+      <div class="dashboard-toolbar-actions">
+        <button class="btn btn-ghost" onclick="openWidgetCatalog()">新增卡片</button>
+        <button class="btn btn-ghost" onclick="resetDashboardLayout()">恢复默认</button>
+        <button class="btn btn-primary" onclick="saveDashboardLayout()">保存布局</button>
+      </div>
+    </div>
+
+    <div class="dashboard-grid" id="dashboardGrid">
+      <div class="dash-widget stat-card" data-widget-id="online-users" data-size="sm" style="cursor:pointer;" onclick="showDashboardDetail('online-users')" data-tooltip="点击查看详情">
+        <div class="dash-edit-handle">在线用户 <span>数字</span></div>
+        <div class="stat-label">在线用户</div><div class="stat-value">数据未获取</div>
+        <div class="stat-change up">等待仪表盘 API 返回</div>
+      </div>
+      <div class="dash-widget stat-card" data-widget-id="running-jobs" data-size="sm" style="cursor:pointer;" onclick="showDashboardDetail('running-jobs')" data-tooltip="点击查看详情">
+        <div class="dash-edit-handle">运行中作业 <span>数字</span></div>
+        <div class="stat-label">运行中作业</div><div class="stat-value">数据未获取</div>
+        <div class="stat-change down">等待 Slurm 同步数据</div>
+      </div>
+      <div class="dash-widget stat-card" data-widget-id="pending-jobs" data-size="sm" style="cursor:pointer;" onclick="showDashboardDetail('pending-jobs')" data-tooltip="点击查看详情">
+        <div class="dash-edit-handle">排队作业 <span>数字</span></div>
+        <div class="stat-label">排队作业</div><div class="stat-value">数据未获取</div>
+        <div class="stat-change up">等待 Slurm 同步数据</div>
+      </div>
+      <div class="dash-widget stat-card" data-widget-id="cpu-usage" data-size="sm" data-tooltip="点击查看历史趋势">
+        <div class="dash-edit-handle">CPU 利用率 <span>仪表盘</span></div>
+        <div class="stat-label">CPU 利用率</div><div class="stat-value">数据未获取</div>
+        <div style="margin-top:6px;"><div class="metric-bar"><div class="metric-bar-fill" style="width:0%;"></div></div></div>
+      </div>
+      <div class="dash-widget stat-card" data-widget-id="gpu-usage" data-size="sm" data-tooltip="点击查看历史趋势">
+        <div class="dash-edit-handle">GPU 利用率 <span>仪表盘</span></div>
+        <div class="stat-label">GPU 利用率</div><div class="stat-value">数据未获取</div>
+        <div style="margin-top:6px;"><div class="metric-bar"><div class="metric-bar-fill" style="width:0%;"></div></div></div>
+      </div>
+      <div class="dash-widget card" data-widget-id="resource-trend" data-size="xl">
+        <div class="dash-edit-handle">集群资源使用趋势 <span>折线图</span></div>
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+          <div><span>集群资源使用趋势</span><div id="trendSummary" class="card-subtitle" style="margin-top:4px;">过去 7 天 CPU/GPU 平均利用率，单位：%</div></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;" id="trendTabs"><button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;" onclick="switchTrend(this,'24h')">24h</button><button class="btn btn-primary" style="padding:4px 10px;font-size:12px;" onclick="switchTrend(this,'7d')">7天</button><button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;" onclick="switchTrend(this,'30d')">30天</button><button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;" onclick="switchTrend(this,'90d')">90天</button><button class="btn btn-ghost" style="padding:4px 10px;font-size:12px;" onclick="switchTrend(this,'1y')">1年</button></div>
+        </div>
+        <div style="display:flex;gap:16px;align-items:center;margin:10px 0 4px;font-size:12px;color:var(--muted);"><span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#007AFF;margin-right:6px;"></i>CPU 平均利用率</span><span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#AF52DE;margin-right:6px;"></i>GPU 平均利用率</span><span id="trendWindow" style="margin-left:auto;">采样粒度：1 天</span></div>
+        <div class="chart-container" style="height:285px;position:relative;"><svg id="trendSvg" viewBox="0 0 640 250" preserveAspectRatio="none" style="width:100%;height:100%;"><g stroke="var(--border)" stroke-width="1" stroke-dasharray="4 4"><line x1="34" y1="30" x2="630" y2="30"/><line x1="34" y1="75" x2="630" y2="75"/><line x1="34" y1="120" x2="630" y2="120"/><line x1="34" y1="165" x2="630" y2="165"/><line x1="34" y1="210" x2="630" y2="210"/></g><g font-size="10" fill="var(--muted)"><text x="4" y="34">100%</text><text x="10" y="79">80%</text><text x="10" y="124">60%</text><text x="10" y="169">40%</text><text x="10" y="214">20%</text></g><path id="trendCpuArea" d="" fill="#007AFF" fill-opacity="0.08" stroke="none"/><path id="trendGpuArea" d="" fill="#AF52DE" fill-opacity="0.08" stroke="none"/><polyline id="trendCpu" fill="none" stroke="#007AFF" stroke-width="3" points=""/><polyline id="trendGpu" fill="none" stroke="#AF52DE" stroke-width="3" points=""/><g id="trendLabels" font-size="10" fill="var(--muted)"></g></svg></div>
+      </div>
+      <div class="dash-widget card" data-widget-id="storage-usage" data-size="lg">
+        <div class="dash-edit-handle">存储目录空间利用率 <span>柱状图</span></div>
+        <div class="card-title">存储目录空间利用率</div>
+        <div class="card-subtitle">对接共享存储目录，展示 NFS/GPFS 文件集配额与已用空间</div>
+        <div class="storage-list" id="dashboardStorageList">
+          <div class="api-data-missing"><strong>数据未获取</strong>：正在从 /api/v1/storage/roots 获取项目对接的存储目录。</div>
+        </div>
+        <div class="storage-summary" id="dashboardStorageSummary">
+          <span>容量用量等待后端采集接口返回</span>
+        </div>
+      </div>
+      <div class="dash-widget card queue-job-trend-card" data-widget-id="queue-job-trends" data-size="xl">
+        <div class="dash-edit-handle">资源池作业趋势 <span>折线图</span></div>
+        <div class="queue-trend-head">
+          <div>
+            <div class="card-title" style="margin-bottom:4px;">资源池作业趋势</div>
+            <div class="card-subtitle">展示各资源队列中运行作业与排队作业的历史变化趋势</div>
+          </div>
+          <div class="queue-trend-controls">
+            <label class="queue-trend-select-label">队列
+              <select id="queueTrendSelect" aria-label="选择资源队列"><option>加载中...</option></select>
+            </label>
+            <div class="queue-trend-range" id="queueTrendRangeTabs" aria-label="选择时间范围">
+              <button class="btn btn-ghost" data-range="24h" type="button">24h</button>
+              <button class="btn btn-primary" data-range="7d" type="button">7天</button>
+              <button class="btn btn-ghost" data-range="30d" type="button">30天</button>
+              <button class="btn btn-ghost" data-range="90d" type="button">90天</button>
+              <button class="btn btn-ghost" data-range="1y" type="button">1年</button>
+            </div>
+          </div>
+        </div>
+        <div class="queue-trend-meta">
+          <div class="queue-trend-legend">
+            <button type="button" class="queue-trend-legend-item active" data-series="running"><i style="background:#007AFF"></i>运行作业数</button>
+            <button type="button" class="queue-trend-legend-item active" data-series="pending"><i style="background:#FF9500"></i>排队作业数</button>
+          </div>
+          <span id="queueTrendSample">采样粒度：—</span>
+        </div>
+        <div class="queue-trend-chart-wrap" id="queueTrendChartWrap">
+          <div class="queue-trend-loading" id="queueTrendLoading" hidden>正在读取资源池作业趋势...</div>
+          <div class="queue-trend-empty" id="queueTrendEmpty" hidden>
+            <div class="queue-trend-empty-icon">⌁</div>
+            <strong>暂无作业趋势数据</strong>
+            <span>当前队列在所选时间范围内暂无运行或排队作业记录</span>
+          </div>
+          <svg id="queueTrendSvg" viewBox="0 0 640 250" preserveAspectRatio="none" role="img" aria-label="资源池作业趋势折线图"></svg>
+          <div class="queue-trend-tooltip" id="queueTrendTooltip" hidden></div>
+        </div>
+      </div>
+
+      <div class="dash-widget card" data-widget-id="recent-alerts" data-size="lg">
+        <div class="dash-edit-handle">最近告警 <span>列表</span></div>
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>最近告警</span>
+          <a href="monitoring.html" style="font-size:13px;color:var(--accent);text-decoration:none;font-weight:600;">查看全部 →</a>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="api-data-missing"><strong>暂无告警数据</strong>：正在从 /api/v1/dashboard 读取 dashboard_alerts。</div>
+        </div>
+      </div>
+    </div>
+    <div style="height:40px;"></div>
+  </main>
+</div>
+
+<script>
+var dashboardEditMode=false;
+var dashboardStorageKey='simplehpc.dashboard.layout.v1';
+var trendData={};
+function trendPoints(values){var left=34,right=630,top=30,bottom=210,step=(right-left)/(values.length-1);return values.map(function(v,i){var x=left+i*step;var y=bottom-(Math.max(0,Math.min(100,v))/100)*(bottom-top);return x.toFixed(1)+','+y.toFixed(1)}).join(' ')}
+function trendArea(points){return 'M'+points.replace(/ /g,' L')+' L630,230 L34,230 Z'}
+function switchTrend(btn,range){var wrap=document.getElementById('trendTabs');wrap.querySelectorAll('button').forEach(function(b){b.classList.remove('btn-primary');b.classList.add('btn-ghost')});btn.classList.remove('btn-ghost');btn.classList.add('btn-primary');if(window.simpleHPCRefreshDashboard){window.simpleHPCRefreshDashboard(range);}}
+function getDashboardWidgets(){return Array.from(document.querySelectorAll('#dashboardGrid .dash-widget'))}
+function makeDashboardControls(widget){
+  if(widget.querySelector('.dash-widget-controls')) return;
+  var controls=document.createElement('div');
+  controls.className='dash-widget-controls';
+  controls.innerHTML='<button class="btn btn-primary dash-edit-btn" onclick="editDashboardWidget(this,event)">编辑</button><button class="btn btn-ghost" style="padding:4px 8px;font-size:12px;" onclick="moveDashboardWidget(this,-1,event)">上移</button><button class="btn btn-ghost" style="padding:4px 8px;font-size:12px;" onclick="moveDashboardWidget(this,1,event)">下移</button><button class="btn btn-ghost dash-size-btn" data-size-value="sm" onclick="resizeDashboardWidget(this,\'sm\',event)">小</button><button class="btn btn-ghost dash-size-btn" data-size-value="md" onclick="resizeDashboardWidget(this,\'md\',event)">中</button><button class="btn btn-ghost dash-size-btn" data-size-value="lg" onclick="resizeDashboardWidget(this,\'lg\',event)">大</button><button class="btn btn-ghost dash-size-btn" data-size-value="xl" onclick="resizeDashboardWidget(this,\'xl\',event)">宽</button><button class="btn btn-ghost dash-size-btn" data-size-value="full" onclick="resizeDashboardWidget(this,\'full\',event)">通栏</button><button class="btn btn-ghost" style="padding:4px 8px;font-size:12px;" onclick="hideDashboardWidget(this,event)">隐藏</button>';
+  widget.appendChild(controls);
+  var handle=document.createElement('div');
+  handle.className='dash-resize-handle';
+  handle.title='拖拽调整卡片大小';
+  widget.appendChild(handle);
+  refreshWidgetSizeButtons(widget);
+  wireDashboardDrag(widget);
+  wireDashboardResize(widget,handle);
+}
+function prepareDashboardWidgets(){getDashboardWidgets().forEach(makeDashboardControls)}
+function toggleDashboardEdit(){
+  dashboardEditMode=!dashboardEditMode;
+  document.body.classList.toggle('dashboard-editing',dashboardEditMode);
+  document.getElementById('dashboardEditBtn').textContent=dashboardEditMode?'退出编辑':'编辑仪表盘';
+  prepareDashboardWidgets();
+  getDashboardWidgets().forEach(function(widget){widget.draggable=dashboardEditMode});
+  if(dashboardEditMode) wireDashboardGridDrop();
+}
+function editDashboardWidget(btn,event){
+  if(event){event.preventDefault();event.stopPropagation();}
+  openWidgetSettings(btn.closest('.dash-widget'));
+}
+function moveDashboardWidget(btn,dir,event){
+  if(event){event.preventDefault();event.stopPropagation();}
+  var widget=btn.closest('.dash-widget');
+  var grid=document.getElementById('dashboardGrid');
+  if(dir<0 && widget.previousElementSibling) grid.insertBefore(widget,widget.previousElementSibling);
+  if(dir>0 && widget.nextElementSibling) grid.insertBefore(widget.nextElementSibling,widget);
+  App.toast('卡片位置已调整，点击保存布局后固化','info',1600);
+}
+function resizeDashboardWidget(btn,size,event){
+  if(event){event.preventDefault();event.stopPropagation();}
+  var widget=btn.closest('.dash-widget');
+  setDashboardWidgetSize(widget,size);
+  App.toast('卡片尺寸已调整为：'+sizeLabel(size),'success',1600);
+}
+function setDashboardWidgetSize(widget,size){
+  widget.dataset.size=size;
+  refreshWidgetSizeButtons(widget);
+}
+function refreshWidgetSizeButtons(widget){
+  var size=widget.dataset.size||'md';
+  widget.querySelectorAll('.dash-size-btn').forEach(function(btn){
+    var active=btn.dataset.sizeValue===size;
+    btn.classList.toggle('btn-primary',active);
+    btn.classList.toggle('btn-ghost',!active);
+  });
+}
+function sizeLabel(size){return {sm:'小',md:'中',lg:'大',xl:'宽',full:'通栏'}[size]||size}
+function hideDashboardWidget(btn,event){
+  if(event){event.preventDefault();event.stopPropagation();}
+  var widget=btn.closest('.dash-widget');
+  widget.classList.add('is-hidden');
+  App.toast('卡片已隐藏，可恢复默认或保存当前布局','warn',1800);
+}
+function wireDashboardDrag(widget){
+  if(widget.dataset.dragWired==='true') return;
+  widget.dataset.dragWired='true';
+  widget.addEventListener('dragstart',function(e){
+    if(!dashboardEditMode){e.preventDefault();return;}
+    if(e.target.closest('.dash-widget-controls') || e.target.closest('.dash-resize-handle')){e.preventDefault();return;}
+    widget.classList.add('is-dragging');
+    e.dataTransfer.effectAllowed='move';
+    e.dataTransfer.setData('text/plain',widget.dataset.widgetId||'');
+  });
+  widget.addEventListener('dragend',function(){
+    widget.classList.remove('is-dragging');
+    document.getElementById('dashboardGrid').classList.remove('is-dragover');
+  });
+}
+function wireDashboardGridDrop(){
+  var grid=document.getElementById('dashboardGrid');
+  if(grid.dataset.dropWired==='true') return;
+  grid.dataset.dropWired='true';
+  grid.addEventListener('dragover',function(e){
+    if(!dashboardEditMode) return;
+    e.preventDefault();
+    grid.classList.add('is-dragover');
+    var dragging=document.querySelector('.dash-widget.is-dragging');
+    if(!dragging) return;
+    var after=getDragAfterWidget(grid,e.clientX,e.clientY);
+    if(after==null) grid.appendChild(dragging);
+    else grid.insertBefore(dragging,after);
+  });
+  grid.addEventListener('drop',function(e){
+    if(!dashboardEditMode) return;
+    e.preventDefault();
+    grid.classList.remove('is-dragover');
+    App.toast('卡片位置已拖拽调整，点击保存布局后固化','success',1800);
+  });
+}
+function getDragAfterWidget(grid,x,y){
+  var widgets=Array.from(grid.querySelectorAll('.dash-widget:not(.is-dragging):not(.is-hidden)'));
+  var closest={offset:Number.NEGATIVE_INFINITY,element:null};
+  widgets.forEach(function(child){
+    var box=child.getBoundingClientRect();
+    var rowOffset=y-(box.top+box.height/2);
+    var colOffset=x-(box.left+box.width/2);
+    var offset=rowOffset*10000+colOffset;
+    if(offset<0 && offset>closest.offset) closest={offset:offset,element:child};
+  });
+  return closest.element;
+}
+function wireDashboardResize(widget,handle){
+  if(handle.dataset.resizeWired==='true') return;
+  handle.dataset.resizeWired='true';
+  handle.addEventListener('pointerdown',function(e){
+    if(!dashboardEditMode) return;
+    e.preventDefault();
+    e.stopPropagation();
+    widget.draggable=false;
+    widget.classList.add('is-resizing');
+    var startX=e.clientX;
+    var startWidth=widget.getBoundingClientRect().width;
+    var grid=document.getElementById('dashboardGrid');
+    handle.setPointerCapture(e.pointerId);
+    function onMove(moveEvent){
+      var nextWidth=Math.max(140,startWidth+(moveEvent.clientX-startX));
+      setDashboardWidgetSize(widget,sizeFromWidth(grid,nextWidth));
+    }
+    function onUp(upEvent){
+      handle.releasePointerCapture(upEvent.pointerId);
+      handle.removeEventListener('pointermove',onMove);
+      handle.removeEventListener('pointerup',onUp);
+      handle.removeEventListener('pointercancel',onUp);
+      widget.classList.remove('is-resizing');
+      widget.draggable=dashboardEditMode;
+      App.toast('卡片大小已拖拽调整，点击保存布局后固化','success',1600);
+    }
+    handle.addEventListener('pointermove',onMove);
+    handle.addEventListener('pointerup',onUp);
+    handle.addEventListener('pointercancel',onUp);
+  });
+}
+function sizeFromWidth(grid,width){
+  var gridWidth=grid.getBoundingClientRect().width;
+  var cols=Math.max(1,Math.min(12,Math.round(width/gridWidth*12)));
+  if(cols<=2) return 'sm';
+  if(cols<=4) return 'md';
+  if(cols<=6) return 'lg';
+  if(cols<=9) return 'xl';
+  return 'full';
+}
+function renderWidgetBody(type,title){
+  if(type==='number') return '<div class="stat-label">'+title+'</div><div class="widget-preview-number">128</div><div class="stat-note success">+6.8% 本周</div>';
+  if(type==='bar') return '<div class="widget-preview"><div class="widget-preview-bars"><i style="height:42%"></i><i style="height:64%"></i><i style="height:78%"></i><i style="height:55%"></i><i style="height:88%"></i></div></div>';
+  if(type==='pie') return '<div class="widget-preview"><div class="widget-preview-pie"></div><div style="margin-top:10px;">队列占比 / 存储占比 / 用户分布</div></div>';
+  if(type==='gauge') return '<div class="widget-preview"><div class="widget-preview-gauge"></div><div style="margin-top:10px;">当前值 72%</div></div>';
+  return '<div class="chart-container" style="height:160px;"><svg viewBox="0 0 420 150" preserveAspectRatio="none" style="width:100%;height:100%;"><path d="M10 120 L90 92 L170 105 L250 62 L330 76 L410 38" fill="none" stroke="var(--accent)" stroke-width="4"/><path d="M10 120 L90 92 L170 105 L250 62 L330 76 L410 38 L410 150 L10 150 Z" fill="var(--accent)" fill-opacity=".08"/></svg></div>';
+}
+function createDashboardWidget(opts){
+  var id=opts.id||('custom-'+Date.now());
+  var type=opts.type||'line';
+  var title=opts.title||'自定义卡片';
+  var size=opts.size||'md';
+  var desc=opts.description||'自定义数据展示素材，可在后续对接真实接口';
+  var card=document.createElement('div');
+  card.className='dash-widget card';
+  card.dataset.widgetId=id;
+  card.dataset.size=size;
+  card.dataset.custom='true';
+  card.dataset.widgetType=type;
+  card.dataset.title=title;
+  card.dataset.description=desc;
+  card.innerHTML='<div class="dash-edit-handle">'+title+' <span>'+typeName(type)+'</span></div><div class="card-title">'+title+'</div><div class="card-subtitle">'+desc+'</div>'+renderWidgetBody(type,title);
+  document.getElementById('dashboardGrid').appendChild(card);
+  makeDashboardControls(card);
+  return card;
+}
+function typeName(type){return {line:'折线图',bar:'柱状图',pie:'饼状图',number:'数字',gauge:'仪表盘',table:'表格',list:'列表'}[type]||type}
+function widgetTitle(widget){
+  return widget.dataset.title || widget.querySelector('.card-title span')?.textContent?.trim() || widget.querySelector('.card-title')?.textContent?.trim() || widget.querySelector('.stat-label')?.textContent?.trim() || '仪表盘卡片';
+}
+function openWidgetSettings(widget){
+  var id=widget.dataset.widgetId;
+  var title=widgetTitle(widget);
+  var type=widget.dataset.widgetType || widget.querySelector('.dash-edit-handle span')?.textContent?.trim() || 'number';
+  var size=widget.dataset.size || 'md';
+  var desc=widget.dataset.description || widget.querySelector('.card-subtitle')?.textContent?.trim() || '';
+  App.drawer({title:'编辑卡片：'+title,width:'560px',content:'<div class="_shpc-form-grid"><div class="_shpc-field"><label>卡片名称</label><input id="editWidgetTitle" value="'+title.replace(/"/g,'&quot;')+'"></div><div class="_shpc-field"><label>展示素材</label><select id="editWidgetType"><option value="line">折线图</option><option value="bar">柱状图</option><option value="pie">饼状图</option><option value="number">数字</option><option value="gauge">仪表盘</option><option value="table">表格</option><option value="list">列表</option></select></div><div class="_shpc-field"><label>卡片尺寸</label><select id="editWidgetSize"><option value="sm">小</option><option value="md">中</option><option value="lg">大</option><option value="xl">宽</option><option value="full">通栏</option></select></div><div class="_shpc-field"><label>数据来源</label><select id="editWidgetSource"><option>当前卡片数据源</option><option>Slurm 作业统计</option><option>LDAP 用户统计</option><option>共享存储目录</option><option>系统巡检报告</option></select></div></div><div class="_shpc-field" style="margin-top:14px;"><label>展示内容说明</label><textarea id="editWidgetDesc" rows="4">'+desc.replace(/</g,'&lt;')+'</textarea></div><div style="margin-top:12px;color:var(--muted);font-size:13px;">也可以直接拖拽卡片移动位置，拖拽右下角手柄调整大小。</div>',footerHtml:'<button class="btn btn-ghost _shpc-drawer-btn-close">取消</button><button class="btn btn-primary" onclick="applyWidgetSettings(\''+id+'\')">应用到卡片</button>'});
+  setTimeout(function(){
+    var typeSelect=document.getElementById('editWidgetType');
+    var sizeSelect=document.getElementById('editWidgetSize');
+    if(typeSelect) typeSelect.value=normalizeWidgetType(type);
+    if(sizeSelect) sizeSelect.value=size;
+  },0);
+}
+function normalizeWidgetType(type){
+  if(type==='折线图') return 'line';
+  if(type==='柱状图') return 'bar';
+  if(type==='饼状图') return 'pie';
+  if(type==='数字') return 'number';
+  if(type==='仪表盘') return 'gauge';
+  return type || 'number';
+}
+function updateWidgetDisplay(widget,title,type,desc){
+  if(title) widget.dataset.title=title;
+  if(type) widget.dataset.widgetType=type;
+  if(desc) widget.dataset.description=desc;
+  var handle=widget.querySelector('.dash-edit-handle');
+  if(handle) handle.innerHTML=(title||widgetTitle(widget))+' <span>'+typeName(type||widget.dataset.widgetType||'number')+'</span>';
+  var statLabel=widget.querySelector('.stat-label');
+  if(statLabel && title) statLabel.textContent=title;
+  var titleEl=widget.querySelector('.card-title');
+  if(titleEl && title){
+    var nested=titleEl.querySelector('span');
+    if(nested) nested.textContent=title;
+    else titleEl.textContent=title;
+  }
+  var subtitle=widget.querySelector('.card-subtitle');
+  if(subtitle && desc) subtitle.textContent=desc;
+}
+function applyWidgetSettings(id){
+  var widget=document.querySelector('[data-widget-id="'+id+'"]');
+  if(!widget) return;
+  var title=document.getElementById('editWidgetTitle').value.trim()||widgetTitle(widget);
+  var type=document.getElementById('editWidgetType').value;
+  var size=document.getElementById('editWidgetSize').value;
+  var desc=document.getElementById('editWidgetDesc').value.trim();
+  setDashboardWidgetSize(widget,size);
+  updateWidgetDisplay(widget,title,type,desc);
+  if(widget.dataset.custom==='true'){
+    var bodyStart=widget.querySelector('.widget-preview, .chart-container, .widget-preview-number');
+    if(bodyStart) {
+      var subtitleHtml='<div class="card-subtitle">'+(desc||'自定义数据展示素材，可在后续对接真实接口')+'</div>';
+      widget.innerHTML='<div class="dash-edit-handle">'+title+' <span>'+typeName(type)+'</span></div><div class="card-title">'+title+'</div>'+subtitleHtml+renderWidgetBody(type,title);
+      widget.dataset.title=title;
+      widget.dataset.widgetType=type;
+      widget.dataset.description=desc;
+      makeDashboardControls(widget);
+    }
+  }
+  document.querySelector('._shpc-drawer')?.remove();
+  App.toast('卡片配置已应用，点击保存布局后固化','success');
+}
+function openWidgetCatalog(){
+  App.drawer({title:'新增仪表盘卡片',width:'560px',content:'<div class="_shpc-form-grid"><div class="_shpc-field"><label>卡片名称</label><input id="newWidgetTitle" value="存储告警数量"></div><div class="_shpc-field"><label>展示素材</label><select id="newWidgetType"><option value="line">折线图</option><option value="bar">柱状图</option><option value="pie">饼状图</option><option value="number">数字</option><option value="gauge">仪表盘</option></select></div><div class="_shpc-field"><label>默认尺寸</label><select id="newWidgetSize"><option value="sm">小</option><option value="md" selected>中</option><option value="lg">大</option><option value="xl">宽</option><option value="full">通栏</option></select></div><div class="_shpc-field"><label>数据来源</label><select><option>Slurm 作业统计</option><option>LDAP 用户统计</option><option>共享存储目录</option><option>系统巡检报告</option></select></div></div><div style="margin-top:12px;color:var(--muted);font-size:13px;">当前为 UI 原型：保存后会把卡片配置固化到当前浏览器，后续后端接口接入后可替换为真实数据。</div>',footerHtml:'<button class="btn btn-ghost _shpc-drawer-btn-close">取消</button><button class="btn btn-primary" onclick="addDashboardWidgetFromDrawer()">添加卡片</button>'});
+}
+function addDashboardWidgetFromDrawer(){
+  var title=document.getElementById('newWidgetTitle').value.trim()||'自定义卡片';
+  var type=document.getElementById('newWidgetType').value;
+  var size=document.getElementById('newWidgetSize').value;
+  createDashboardWidget({title:title,type:type,size:size});
+  document.querySelector('._shpc-drawer')?.remove();
+  App.toast('卡片已添加，可继续调整尺寸和位置','success');
+}
+function captureDashboardLayout(){
+  return getDashboardWidgets().map(function(w){return {id:w.dataset.widgetId,size:w.dataset.size||'md',hidden:w.classList.contains('is-hidden'),custom:w.dataset.custom==='true',type:w.dataset.widgetType,title:w.dataset.title,description:w.dataset.description}});
+}
+function saveDashboardLayout(){
+  localStorage.setItem(dashboardStorageKey,JSON.stringify(captureDashboardLayout()));
+  App.toast('仪表盘布局已保存','success');
+}
+function applyDashboardLayout(){
+  var raw=localStorage.getItem(dashboardStorageKey);
+  if(!raw) return;
+  try{
+    var grid=document.getElementById('dashboardGrid');
+    JSON.parse(raw).forEach(function(item){
+      var w=document.querySelector('[data-widget-id="'+item.id+'"]');
+      if(!w && item.custom) w=createDashboardWidget(item);
+      if(!w) return;
+      w.dataset.size=item.size||'md';
+      updateWidgetDisplay(w,item.title,item.type,item.description);
+      w.classList.toggle('is-hidden',!!item.hidden);
+      grid.appendChild(w);
+    });
+  }catch(e){console.warn('dashboard layout restore failed',e)}
+}
+function resetDashboardLayout(){
+  localStorage.removeItem(dashboardStorageKey);
+  App.toast('已恢复默认布局，页面即将刷新','info');
+  setTimeout(function(){location.reload()},600);
+}
+function escapeHtml(value){
+  return String(value == null ? '' : value).replace(/[&<>"']/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]});
+}
+function inferStorageType(path){
+  if(/home/i.test(path)) return '用户家目录和团队默认组目录';
+  if(/share|project/i.test(path)) return '团队共享数据和项目目录';
+  if(/recycle|trash/i.test(path)) return '系统回收站';
+  if(/scratch|tmp/i.test(path)) return '作业临时输入输出和高速缓存';
+  return '集群存储目录';
+}
+function normalizeDashboardStorageRoot(root){
+  var path=root.path || root.mountPoint || root.root || '';
+  return {
+    path:path,
+    fs:root.fsType || root.fs || root.filesystem || '文件系统未获取',
+    purpose:root.purpose || inferStorageType(path),
+    usage:Number.isFinite(Number(root.usagePercent)) ? Number(root.usagePercent) : null,
+    total:root.total || root.totalText || '',
+    used:root.used || root.usedText || '',
+    warn:root.warn || root.warnThreshold || ''
+  };
+}
+function renderDashboardStorageRoots(roots){
+  var list=document.getElementById('dashboardStorageList');
+  var summary=document.getElementById('dashboardStorageSummary');
+  if(!list) return;
+  if(!roots.length){
+    list.innerHTML='<div class="api-data-missing"><strong>数据未获取</strong>：后端未返回项目对接的存储目录。</div>';
+    if(summary) summary.innerHTML='<span>容量用量等待后端采集接口返回</span>';
+    return;
+  }
+  list.innerHTML=roots.map(function(root){
+    var usageText=root.usage === null ? '用量数据未获取' : root.usage + '%';
+    var barClass=root.usage === null ? '' : (root.usage >= 85 ? 'danger' : root.usage >= 75 ? 'warn' : 'success');
+    var width=root.usage === null ? 0 : Math.max(0,Math.min(100,root.usage));
+    return '<div class="storage-row '+(root.usage === null ? 'is-missing-usage' : '')+'"><div><strong>'+escapeHtml(root.path)+'</strong><span>'+escapeHtml(root.fs)+' · '+escapeHtml(root.purpose)+'</span></div><em>'+escapeHtml(usageText)+'</em><div class="metric-bar"><div class="metric-bar-fill '+barClass+'" style="width:'+width+'%;"></div></div></div>';
+  }).join('');
+  if(summary){
+    var hasUsage=roots.some(function(root){return root.usage !== null || root.total || root.used || root.warn;});
+    summary.innerHTML=hasUsage
+      ? roots.map(function(root){return root.total || root.used || root.warn ? '<span>'+escapeHtml(root.path)+' '+escapeHtml([root.total && ('总容量 '+root.total),root.used && ('已用 '+root.used),root.warn && ('告警阈值 '+root.warn)].filter(Boolean).join(' · '))+'</span>' : '';}).join('')
+      : '<span>用量数据未获取：/api/v1/storage/roots 当前仅返回存储目录配置，未返回容量字段</span>';
+  }
+}
+async function loadDashboardStorageUsage(){
+  try{
+    var res=await fetch('/api/v1/storage/roots',{cache:'no-store'});
+    var data=await res.json().catch(function(){return {};});
+    if(!res.ok) throw new Error(data.error || res.statusText || '接口请求失败');
+    var roots=Array.isArray(data) ? data : (data.items || data.roots || data.data || []);
+    renderDashboardStorageRoots(roots.map(normalizeDashboardStorageRoot).filter(function(root){return root.path;}));
+  }catch(err){
+    var list=document.getElementById('dashboardStorageList');
+    var summary=document.getElementById('dashboardStorageSummary');
+    if(list) list.innerHTML='<div class="api-data-missing"><strong>数据未获取</strong>：/api/v1/storage/roots '+escapeHtml(err.message)+'</div>';
+    if(summary) summary.innerHTML='<span>存储目录容量数据未获取</span>';
+  }
+}
+document.addEventListener('DOMContentLoaded',function(){
+  applyDashboardLayout();
+  prepareDashboardWidgets();
+});
+</script>
+<script src="js/app.js?v=20260703flicker"></script>
+<script src="js/live.js?v=20260626b"></script>
+<script src="js/dashboard-trend-axis.js?v=20260627a"></script>
+<script src="js/dashboard.js?v=20260703flicker"></script>
+<script src="js/ui-effects.js?v=20260702sample"></script>
+</body>
+</html>

@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,"><title>simpleHPC — 队列状态</title><link rel="stylesheet" href="css/theme.css?v=20260703profile"></head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-icon">S</div><span class="brand-name">simpleHPC</span></div>
+    <ul class="nav">
+      <li class="nav-group-toggle" data-submenu="overview">概览</li><li class="nav-submenu" id="submenu-overview">
+        <a class="nav-submenu-item" href="index.html">仪表盘</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="users">账户管理</li><li class="nav-submenu" id="submenu-users">
+        <a class="nav-submenu-item" href="units.html">单位管理</a>
+        <a class="nav-submenu-item" href="teams.html">团队管理</a>
+        <a class="nav-submenu-item" href="users.html">用户管理</a>
+        <a class="nav-submenu-item" href="admins.html">管理员账号管理</a>
+        <a class="nav-submenu-item" href="roles.html">角色管理</a>
+      </li>
+      <li class="nav-group-toggle expanded" data-submenu="compute">计算管理</li><li class="nav-submenu expanded" id="submenu-compute">
+        <a class="nav-submenu-item" href="partitions.html">资源队列配置</a>
+        <a class="nav-submenu-item active" href="queue-status.html">队列状态</a>
+        <a class="nav-submenu-item" href="nodes.html">节点状态</a>
+        <a class="nav-submenu-item" href="qos.html">QOS 策略</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="data">数据管理</li><li class="nav-submenu" id="submenu-data">
+        <a class="nav-submenu-item" href="data.html">数据目录</a>
+        <a class="nav-submenu-item" href="data-acl.html">访问授权</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="jobs">作业中心</li><li class="nav-submenu" id="submenu-jobs">
+        <a class="nav-submenu-item" href="job-templates.html">作业模板</a>
+        <a class="nav-submenu-item" href="job-list.html">作业列表</a>
+        <a class="nav-submenu-item" href="vnc-desktop.html">VNC 桌面</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="ops">监控运维</li><li class="nav-submenu" id="submenu-ops">
+        <a class="nav-submenu-item" href="monitoring.html">监控告警</a>
+        <a class="nav-submenu-item" href="inspection.html">巡检报告</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="system">系统</li><li class="nav-submenu" id="submenu-system">
+        <a class="nav-submenu-item" href="settings.html">平台设置</a>
+        <a class="nav-submenu-item" href="ldap.html">LDAP 配置</a>
+        <a class="nav-submenu-item" href="slurm.html">Slurm 配置</a>
+        <a class="nav-submenu-item" href="storage.html">存储配置</a>
+        <a class="nav-submenu-item" href="notify.html">通知配置</a>
+        <a class="nav-submenu-item" href="audit.html">审计日志</a>
+      </li>
+    </ul>
+    <div class="sidebar-user"><div class="avatar">管</div><div><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">管理员</div><div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">cluster-admin</div></div></div>
+  </aside>
+  <header class="header"><h1 class="header-title">队列状态</h1>
+    <div class="header-actions">
+      <input class="search-field" placeholder="搜索..." id="globalSearch">
+      <button class="btn-icon" aria-label="通知" data-dropdown='{"html":"<div class=\"_shpc-dropdown-item\">通知消息</div><div class=\"_shpc-dropdown-item\"><span style=\"color:var(--success)\">●</span> 系统正常</div><div class=\"_shpc-dropdown-item\"><a href=\"monitoring.html\" style=\"font-size:12px;color:var(--accent)\">查看全部 →</a></div>","width":"260px","placement":"bottom-end"}'>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </button>
+      <div class="avatar" style="cursor:pointer;" data-dropdown='{"html":"<a class=\"_shpc-dropdown-item\" href=\"users.html\">个人资料</a><button type=\"button\" class=\"_shpc-dropdown-item\" style=\"width:100%;border:0;background:transparent;text-align:left;font:inherit\" onclick=\"App.openPasswordDrawer()\">修改密码</button><div class=\"_shpc-dropdown-divider\"></div><button type=\"button\" class=\"_shpc-dropdown-item\" style=\"width:100%;border:0;background:transparent;text-align:left;font:inherit;color:var(--danger)\" onclick=\"App.logout()\">退出登录</button>","width":"160px","placement":"bottom-end"}'>管</div>
+    </div>
+  </header>
+  <main class="main queue-dashboard">
+    <style>
+      .queue-dashboard { --cpu:#2563eb; --gpu:#8b5cf6; --warn:#d99112; }
+      .queue-monitor-head { display:flex; align-items:center; justify-content:space-between; gap:20px; margin-bottom:22px; }
+      .queue-monitor-title { font-size:26px; line-height:1.15; font-weight:800; }
+      .queue-monitor-meta { display:flex; align-items:center; gap:8px; margin-top:7px; color:var(--muted); font-size:13px; }
+      .queue-refresh svg { transition:transform .4s; }
+      .queue-refresh.loading svg { animation:queue-spin .8s linear infinite; }
+      @keyframes queue-spin { to { transform:rotate(360deg); } }
+      .pool-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; margin-bottom:30px; }
+      .pool-card { min-height:224px; display:flex; flex-direction:column; justify-content:space-between; padding:26px; border:1px solid var(--border); border-radius:18px; background:var(--surface); box-shadow:var(--shadow); }
+      .pool-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; }
+      .pool-icon { width:48px; height:48px; display:grid; place-items:center; border-radius:13px; }
+      .pool-card.cpu .pool-icon { color:var(--cpu); background:#eff6ff; }
+      .pool-card.gpu .pool-icon { color:var(--gpu); background:#f5f3ff; }
+      .pool-label { color:var(--muted); font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.09em; text-align:right; }
+      .pool-value { margin-top:4px; font-size:38px; line-height:1; font-weight:800; text-align:right; }
+      .pool-details { display:grid; gap:10px; }
+      .pool-load { display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:13px; font-weight:700; }
+      .pool-load span:first-child { color:var(--muted); }
+      .pool-card.cpu .pool-load strong { color:var(--cpu); }
+      .pool-card.gpu .pool-load strong { color:var(--gpu); }
+      .pool-track { height:10px; overflow:hidden; border-radius:999px; background:#eef1f4; }
+      .pool-fill { height:100%; border-radius:inherit; transition:width .7s ease; }
+      .pool-card.cpu .pool-fill { background:var(--cpu); }
+      .pool-card.gpu .pool-fill { background:var(--gpu); }
+      .pool-pending { display:flex; align-items:center; gap:7px; color:var(--warn); font-size:12px; font-weight:700; }
+      .partition-section { margin-top:30px; }
+      .partition-heading { display:flex; align-items:center; gap:11px; margin-bottom:16px; }
+      .partition-heading:before { content:""; width:6px; height:25px; border-radius:99px; background:var(--cpu); }
+      .partition-section.gpu .partition-heading:before { background:var(--gpu); }
+      .partition-heading h2 { font-size:18px; }
+      .partition-count { color:var(--muted); font-weight:500; }
+      .partition-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:14px; }
+      .partition-card { min-width:0; padding:18px; border:1px solid var(--border); border-radius:14px; background:var(--surface); box-shadow:var(--shadow); transition:transform .15s,border-color .15s,box-shadow .15s; }
+      .partition-card:hover { transform:translateY(-2px); border-color:#bfdbfe; box-shadow:0 14px 28px rgba(15,23,42,.08); }
+      .partition-section.gpu .partition-card:hover { border-color:#ddd6fe; }
+      .partition-card.high { border-color:#fecdd3; }
+      .partition-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:15px; }
+      .partition-type { color:var(--muted); font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; }
+      .partition-name { max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-top:2px; font-size:16px; font-weight:800; }
+      .partition-icon { width:32px; height:32px; display:grid; place-items:center; flex:0 0 auto; border-radius:9px; color:var(--cpu); background:#eff6ff; }
+      .partition-section.gpu .partition-icon { color:var(--gpu); background:#f5f3ff; }
+      .partition-metric { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; }
+      .partition-metric-label { color:var(--muted); font-size:10px; font-weight:700; }
+      .partition-metric-value { margin-top:3px; font-weight:800; }
+      .partition-percent { font-size:21px; font-weight:800; }
+      .partition-track { height:7px; margin:10px 0 13px; overflow:hidden; border-radius:999px; background:#f1f3f5; }
+      .partition-fill { height:100%; border-radius:inherit; background:#10b981; }
+      .partition-card.medium .partition-fill { background:var(--cpu); }
+      .partition-section.gpu .partition-card.medium .partition-fill { background:var(--gpu); }
+      .partition-card.high .partition-fill { background:#ef476f; }
+      .partition-foot { display:flex; align-items:center; justify-content:space-between; gap:10px; padding-top:12px; border-top:1px solid #f0f2f4; }
+      .partition-health { display:flex; align-items:center; gap:6px; min-width:0; color:var(--muted); font-size:10px; font-weight:800; text-transform:uppercase; }
+      .partition-health:before { content:""; width:7px; height:7px; flex:0 0 auto; border-radius:50%; background:#10b981; }
+      .partition-health.warn:before { background:var(--warn); }
+      .partition-health.danger:before { background:#ef476f; }
+      .pending-link { border:0; background:transparent; color:var(--warn); font:inherit; font-size:11px; font-weight:800; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+      .partition-empty { grid-column:1/-1; padding:28px; border:1px dashed var(--border); border-radius:12px; color:var(--muted); text-align:center; }
+      .queue-modal-table { width:100%; table-layout:fixed; }
+      .queue-modal-table th,.queue-modal-table td { padding:10px 12px; }
+      .queue-modal-table th:nth-child(1) { width:90px; }
+      .queue-modal-table th:nth-child(4),.queue-modal-table th:nth-child(5) { width:70px; }
+      .queue-modal-table td { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .queue-reason { color:var(--muted); }
+      @media (max-width:900px) {
+        .queue-monitor-head { align-items:flex-start; flex-direction:column; }
+        .pool-grid { grid-template-columns:1fr; }
+      }
+      @media (max-width:560px) {
+        .pool-card { min-height:200px; padding:20px; }
+        .partition-grid { grid-template-columns:1fr; }
+      }
+    </style>
+    <div class="queue-monitor-head">
+      <div>
+        <div class="queue-monitor-title">Cluster Monitor</div>
+        <div class="queue-monitor-meta">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <span id="queueUpdated">正在获取 Slurm 实时状态...</span>
+          <span id="queueJobSummary"></span>
+        </div>
+      </div>
+      <button class="btn btn-primary queue-refresh" id="refreshQueues" type="button">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
+        <span>立即刷新</span>
+      </button>
+    </div>
+
+    <div class="pool-grid">
+      <section class="pool-card cpu">
+        <div class="pool-card-head">
+          <div class="pool-icon"><svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg></div>
+          <div><div class="pool-label">CPU Pool Utilization</div><div class="pool-value" id="cpuUtil">数据未获取</div></div>
+        </div>
+        <div class="pool-details">
+          <div class="pool-load"><span>Resource Load</span><strong id="cpuLoad">数据未获取</strong></div>
+          <div class="pool-track"><div class="pool-fill" id="cpuFill" style="width:0"></div></div>
+          <div class="pool-pending" id="cpuPending">等待 Slurm 数据</div>
+        </div>
+      </section>
+      <section class="pool-card gpu">
+        <div class="pool-card-head">
+          <div class="pool-icon"><svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m13 2-9 12h8l-1 8 9-12h-8l1-8Z"/></svg></div>
+          <div><div class="pool-label">GPU Pool Utilization</div><div class="pool-value" id="gpuUtil">数据未获取</div></div>
+        </div>
+        <div class="pool-details">
+          <div class="pool-load"><span>Resource Load</span><strong id="gpuLoad">数据未获取</strong></div>
+          <div class="pool-track"><div class="pool-fill" id="gpuFill" style="width:0"></div></div>
+          <div class="pool-pending" id="gpuPending">等待 Slurm 数据</div>
+        </div>
+      </section>
+    </div>
+
+    <section class="partition-section cpu">
+      <div class="partition-heading"><h2>CPU Partitions <span class="partition-count" id="cpuPartitionCount">(0)</span></h2></div>
+      <div class="partition-grid" id="cpuPartitions"><div class="partition-empty">正在获取 CPU 分区...</div></div>
+    </section>
+    <section class="partition-section gpu">
+      <div class="partition-heading"><h2>GPU Partitions <span class="partition-count" id="gpuPartitionCount">(0)</span></h2></div>
+      <div class="partition-grid" id="gpuPartitions"><div class="partition-empty">正在获取 GPU 分区...</div></div>
+    </section>
+    <div style="height:40px;"></div>
+  </main>
+</div>
+
+<script src="js/app.js?v=20260703profile"></script>
+<script>
+(function () {
+  let queueItems = [];
+  let liveJobs = [];
+  const cpuIcon = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg>';
+  const gpuIcon = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m13 2-9 12h8l-1 8 9-12h-8l1-8Z"/></svg>';
+  function escapeHtml(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function (char) {
+      return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[char];
+    });
+  }
+  function numberValue(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number : 0;
+  }
+  function formatNumber(value) {
+    return numberValue(value).toLocaleString('zh-CN');
+  }
+  function percent(used, total) {
+    return total > 0 ? Math.min(100, used / total * 100) : 0;
+  }
+  function setPool(prefix, used, total, pending, unit) {
+    const utilization = percent(used, total);
+    document.getElementById(prefix + 'Util').textContent = total > 0 ? utilization.toFixed(1) + '%' : '无资源';
+    document.getElementById(prefix + 'Load').textContent = formatNumber(used) + ' / ' + formatNumber(total) + ' ' + unit;
+    document.getElementById(prefix + 'Fill').style.width = utilization + '%';
+    document.getElementById(prefix + 'Pending').textContent = formatNumber(pending) + (prefix === 'cpu' ? ' 核正在排队申请' : ' 张 GPU 正在排队申请');
+  }
+  function nodeHealth(item) {
+    const states = item.nodeStates || {};
+    if ((states.down || 0) > 0 || (states.drain || 0) > 0) return { cls:'danger', label:'需维护' };
+    if (String(item.status || '').toUpperCase() !== 'UP') return { cls:'warn', label:item.status || '状态异常' };
+    return { cls:'', label:'Available' };
+  }
+  function partitionCard(item) {
+    const type = String(item.resourceType || 'CPU').toUpperCase();
+    const used = type === 'GPU' ? numberValue(item.runningGpus) : numberValue(item.runningCores);
+    const total = type === 'GPU' ? numberValue(item.totalGpus) : numberValue(item.totalCores);
+    const pending = type === 'GPU' ? numberValue(item.pendingGpus) : numberValue(item.pendingCores);
+    const utilization = percent(used, total);
+    const loadClass = utilization > 90 ? 'high' : (utilization > 60 ? 'medium' : '');
+    const health = nodeHealth(item);
+    const resourceLabel = type === 'GPU' ? 'GPU' : 'Core';
+    const states = item.nodeStates || {};
+    const stateText = ['idle','alloc','mix','drain','down'].filter(key => states[key]).map(key => states[key] + ' ' + key).join(' / ');
+    return '<article class="partition-card ' + loadClass + '">' +
+      '<div class="partition-card-head"><div><div class="partition-type">' + escapeHtml(type) + '</div><div class="partition-name" title="' + escapeHtml(item.partition) + '">' + escapeHtml(item.partition || '数据未获取') + '</div></div>' +
+      '<div class="partition-icon">' + (type === 'GPU' ? gpuIcon : cpuIcon) + '</div></div>' +
+      '<div class="partition-metric"><div><div class="partition-metric-label">USED / TOTAL</div><div class="partition-metric-value">' + formatNumber(used) + ' / ' + formatNumber(total) + ' ' + resourceLabel + '</div></div><div class="partition-percent">' + utilization.toFixed(1) + '%</div></div>' +
+      '<div class="partition-track"><div class="partition-fill" style="width:' + utilization + '%"></div></div>' +
+      '<div class="partition-foot"><div class="partition-health ' + health.cls + '" title="' + escapeHtml(stateText || item.nodeStatus || '') + '">' + escapeHtml(health.label) + ' · ' + formatNumber(item.totalNodes) + ' 节点</div>' +
+      (numberValue(item.pendingJobs) > 0 ? '<button class="pending-link" type="button" data-pending-partition="' + escapeHtml(item.partition) + '">' + formatNumber(item.pendingJobs) + ' WAIT</button>' : '<span class="partition-type">NO WAIT</span>') +
+      '</div></article>';
+  }
+  function renderPartitions(items) {
+    const cpu = items.filter(item => String(item.resourceType || 'CPU').toUpperCase() !== 'GPU');
+    const gpu = items.filter(item => String(item.resourceType || '').toUpperCase() === 'GPU');
+    document.getElementById('cpuPartitionCount').textContent = '(' + cpu.length + ')';
+    document.getElementById('gpuPartitionCount').textContent = '(' + gpu.length + ')';
+    document.getElementById('cpuPartitions').innerHTML = cpu.length ? cpu.map(partitionCard).join('') : '<div class="partition-empty">Slurm 当前没有返回 CPU 分区</div>';
+    document.getElementById('gpuPartitions').innerHTML = gpu.length ? gpu.map(partitionCard).join('') : '<div class="partition-empty">Slurm 当前没有返回 GPU 分区</div>';
+  }
+  function pendingReason(job) {
+    const value = String(job.nodeList || '').trim();
+    if (!value || value === '(null)' || value === 'None assigned') return '等待调度';
+    return value.replace(/^\((.*)\)$/, '$1');
+  }
+  function showPendingJobs(partition) {
+    const jobs = liveJobs.filter(job => String(job.partition || '').replace(/\*$/,'') === partition && ['PENDING','PD'].includes(String(job.state || '').toUpperCase()));
+    const rows = jobs.map(job => '<tr><td>' + escapeHtml(job.id) + '</td><td title="' + escapeHtml(job.name) + '">' + escapeHtml(job.name || '-') + '</td><td>' + escapeHtml(job.user || '-') + '</td><td>' + formatNumber(job.cpus) + '</td><td>' + formatNumber(job.gpus) + '</td><td class="queue-reason" title="' + escapeHtml(pendingReason(job)) + '">' + escapeHtml(pendingReason(job)) + '</td></tr>').join('');
+    const content = jobs.length
+      ? '<div class="table-wrap"><table class="queue-modal-table"><thead><tr><th>JobID</th><th>名称</th><th>用户</th><th>CPU</th><th>GPU</th><th>等待原因</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      : '<div class="partition-empty">该分区当前没有排队作业</div>';
+    App.modal({ title:'排队作业 · ' + partition, content:content, width:'900px', showFooter:false });
+  }
+  async function loadQueueStatus() {
+    const responses = await Promise.all([
+      App.apiFetch('/api/v1/slurm/queue-status', { cache:'no-store' }),
+      App.apiFetch('/api/v1/slurm/jobs?live=1', { cache:'no-store' })
+    ]);
+    const data = await responses[0].json().catch(() => ({}));
+    const jobsData = await responses[1].json().catch(() => ({}));
+    if (!responses[0].ok) throw new Error(data.error || ('HTTP ' + responses[0].status));
+    const summary = data.summary || {};
+    queueItems = data.items || [];
+    liveJobs = jobsData.items || [];
+    setPool('cpu', numberValue(summary.runningCores), numberValue(summary.totalCores), numberValue(summary.pendingCores), 'Cores');
+    setPool('gpu', numberValue(summary.runningGpus), numberValue(summary.totalGpus), numberValue(summary.pendingGpus), 'Cards');
+    renderPartitions(queueItems);
+    document.getElementById('queueUpdated').textContent = '更新于 ' + new Date().toLocaleTimeString('zh-CN', { hour12:false });
+    document.getElementById('queueJobSummary').textContent = '· 运行 ' + formatNumber(summary.runningJobs) + ' / 排队 ' + formatNumber(summary.pendingJobs) + ' 作业';
+  }
+  async function refresh() {
+    const button = document.getElementById('refreshQueues');
+    button.disabled = true;
+    button.classList.add('loading');
+    button.querySelector('span').textContent = '同步中...';
+    try {
+      await loadQueueStatus();
+      App.toast('队列状态已更新', 'success');
+    } catch (error) {
+      App.toast('队列状态获取失败：' + error.message, 'danger');
+    } finally {
+      button.disabled = false;
+      button.classList.remove('loading');
+      button.querySelector('span').textContent = '立即刷新';
+    }
+  }
+  document.getElementById('refreshQueues').addEventListener('click', refresh);
+  document.querySelector('.queue-dashboard').addEventListener('click', function (event) {
+    const trigger = event.target.closest('[data-pending-partition]');
+    if (trigger) showPendingJobs(trigger.dataset.pendingPartition);
+  });
+  loadQueueStatus().catch(err => {
+    document.getElementById('queueUpdated').textContent = '数据未获取：' + err.message;
+    document.getElementById('cpuPartitions').innerHTML = '<div class="partition-empty">数据未获取：' + escapeHtml(err.message) + '</div>';
+    document.getElementById('gpuPartitions').innerHTML = '<div class="partition-empty">数据未获取：' + escapeHtml(err.message) + '</div>';
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
+<title>simpleHPC — LDAP 配置</title>
+<link rel="stylesheet" href="css/theme.css?v=20260703profile">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-icon">S</div><span class="brand-name">simpleHPC</span></div>
+    <ul class="nav">
+      <li class="nav-group-toggle" data-submenu="overview">概览</li><li class="nav-submenu" id="submenu-overview">
+        <a class="nav-submenu-item" href="index.html">仪表盘</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="users">账户管理</li><li class="nav-submenu" id="submenu-users">
+        <a class="nav-submenu-item" href="units.html">单位管理</a>
+        <a class="nav-submenu-item" href="teams.html">团队管理</a>
+        <a class="nav-submenu-item" href="users.html">用户管理</a>
+        <a class="nav-submenu-item" href="admins.html">管理员账号管理</a>
+        <a class="nav-submenu-item" href="roles.html">角色管理</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="compute">计算管理</li><li class="nav-submenu" id="submenu-compute">
+        <a class="nav-submenu-item" href="partitions.html">资源队列配置</a>
+        <a class="nav-submenu-item" href="queue-status.html">队列状态</a>
+        <a class="nav-submenu-item" href="nodes.html">节点状态</a>
+        <a class="nav-submenu-item" href="qos.html">QOS 策略</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="data">数据管理</li><li class="nav-submenu" id="submenu-data">
+        <a class="nav-submenu-item" href="data.html">数据目录</a>
+        <a class="nav-submenu-item" href="data-acl.html">访问授权</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="jobs">作业中心</li><li class="nav-submenu" id="submenu-jobs">
+        <a class="nav-submenu-item" href="job-templates.html">作业模板</a>
+        <a class="nav-submenu-item" href="job-list.html">作业列表</a>
+        <a class="nav-submenu-item" href="vnc-desktop.html">VNC 桌面</a>
+      </li>
+      <li class="nav-group-toggle" data-submenu="ops">监控运维</li><li class="nav-submenu" id="submenu-ops">
+        <a class="nav-submenu-item" href="monitoring.html">监控告警</a>
+        <a class="nav-submenu-item" href="inspection.html">巡检报告</a>
+      </li>
+      <li class="nav-group-toggle expanded" data-submenu="system">系统</li><li class="nav-submenu expanded" id="submenu-system">
+        <a class="nav-submenu-item" href="settings.html">平台设置</a>
+        <a class="nav-submenu-item active" href="ldap.html">LDAP 配置</a>
+        <a class="nav-submenu-item" href="slurm.html">Slurm 配置</a>
+        <a class="nav-submenu-item" href="storage.html">存储配置</a>
+        <a class="nav-submenu-item" href="notify.html">通知配置</a>
+        <a class="nav-submenu-item" href="audit.html">审计日志</a>
+      </li>
+    </ul>
+    <div class="sidebar-user"><div class="avatar">管</div><div><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">管理员</div><div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">cluster-admin</div></div></div>
+  </aside>
+  <header class="header">
+    <h1 class="header-title">LDAP 配置</h1>
+    <div class="header-actions">
+      <input class="search-field" placeholder="搜索..." id="globalSearch">
+      <button class="btn-icon" aria-label="通知" data-dropdown='{"html":"<div class=\"_shpc-dropdown-item\">通知消息</div><div class=\"_shpc-dropdown-item\"><span style=\"color:var(--success)\">●</span> 系统运行正常</div>","width":"240px","placement":"bottom-end"}'>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </button>
+      <div class="avatar" style="cursor:pointer;" data-dropdown='{"html":"&lt;a class=&quot;_shpc-dropdown-item&quot; href=&quot;users.html&quot;&gt;个人资料&lt;/a&gt;&lt;button type=&quot;button&quot; class=&quot;_shpc-dropdown-item&quot; style=&quot;width:100%;border:0;background:transparent;text-align:left;font:inherit&quot; onclick=&quot;App.openPasswordDrawer()&quot;&gt;修改密码&lt;/button&gt;&lt;div class=&quot;_shpc-dropdown-divider&quot;&gt;&lt;/div&gt;&lt;button type=&quot;button&quot; class=&quot;_shpc-dropdown-item&quot; style=&quot;width:100%;border:0;background:transparent;text-align:left;font:inherit;color:var(--danger)&quot; onclick=&quot;App.logout()&quot;&gt;退出登录&lt;/button&gt;","width":"160px","placement":"bottom-end"}'>管</div>
+    </div>
+  </header>
+  <main class="main">
+<div class="card">
+  <div class="card-title">LDAP Server 配置</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    <div class="_shpc-field"><label>服务器地址</label><input id="ldapUrl" placeholder="ldap://10.10.38.152:389"></div>
+    <div class="_shpc-field"><label>Base DN</label><input id="ldapBaseDN" placeholder="dc=simplehpc,dc=local"></div>
+    <div class="_shpc-field"><label>Bind DN</label><input id="ldapBindDN" placeholder="cn=admin,dc=simplehpc,dc=local"></div>
+    <div class="_shpc-field"><label>Bind 密码</label><input id="ldapBindPassword" type="password" placeholder="留空表示不修改已保存密码"></div>
+  </div>
+  <div style="margin-top:18px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <button class="btn btn-ghost" id="ldapTestBtn">测试连接</button>
+    <button class="btn btn-primary" id="ldapSaveBtn">保存配置</button>
+    <span id="ldapConfigState" style="font-size:13px;color:var(--muted);"></span>
+  </div>
+</div>
+    <div style="height:40px;"></div>
+  </main>
+</div>
+
+<script src="js/app.js?v=20260703profile"></script>
+<script>
+(function () {
+  const fields = {
+    url: document.getElementById('ldapUrl'),
+    baseDN: document.getElementById('ldapBaseDN'),
+    bindDN: document.getElementById('ldapBindDN'),
+    bindPassword: document.getElementById('ldapBindPassword')
+  };
+  const state = document.getElementById('ldapConfigState');
+  function payload() {
+    return {
+      url: fields.url.value.trim(),
+      baseDN: fields.baseDN.value.trim(),
+      bindDN: fields.bindDN.value.trim(),
+      bindPassword: fields.bindPassword.value
+    };
+  }
+  async function request(url, options) {
+    const res = await fetch(url, Object.assign({ headers: { 'Content-Type': 'application/json' }, cache: 'no-store' }, options || {}));
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+    return data;
+  }
+  async function load() {
+    try {
+      const data = await request('/api/v1/config/ldap');
+      const cfg = data.config || {};
+      fields.url.value = cfg.url || '';
+      fields.baseDN.value = cfg.baseDN || '';
+      fields.bindDN.value = cfg.bindDN || '';
+      fields.bindPassword.value = '';
+      state.textContent = '配置来自后端 API';
+    } catch (err) {
+      state.textContent = '数据未获取：' + err.message;
+      App.toast('LDAP 配置数据未获取：' + err.message, 'danger');
+    }
+  }
+  document.getElementById('ldapTestBtn').addEventListener('click', async function () {
+    try {
+      await request('/api/v1/config/ldap/test', { method: 'POST', body: JSON.stringify(payload()) });
+      App.toast('LDAP 连接成功', 'success');
+    } catch (err) {
+      App.toast('LDAP 连接失败：' + err.message, 'danger');
+    }
+  });
+  document.getElementById('ldapSaveBtn').addEventListener('click', async function () {
+    try {
+      await request('/api/v1/config/ldap', { method: 'PUT', body: JSON.stringify(payload()) });
+      App.toast('LDAP 配置已保存', 'success');
+      await load();
+    } catch (err) {
+      App.toast('LDAP 配置保存失败：' + err.message, 'danger');
+    }
+  });
+  load();
+})();
+</script>
+</body>
+</html>
