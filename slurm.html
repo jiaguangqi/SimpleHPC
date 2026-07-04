@@ -64,12 +64,29 @@
   </header>
   <main class="main">
 <div class="card">
-  <div class="card-title">Slurm Controller / DBD 配置</div>
+  <div class="card-title">Slurm Controller / DBD 对接</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-    <div class="_shpc-field"><label>Controller 地址</label><input id="slurmControllerHost" placeholder="10.10.38.152"></div>
-    <div class="_shpc-field"><label>SlurmDBD 地址</label><input id="slurmDBDHost" placeholder="10.10.38.152"></div>
+    <div class="_shpc-field"><label>Controller 主节点 <span style="color:var(--danger);">*</span></label><input id="slurmControllerHost" placeholder="10.10.38.152" required></div>
+    <div class="_shpc-field"><label>Controller 备节点 <span style="color:var(--muted);font-weight:500;">选填</span></label><input id="slurmControllerBackupHost" placeholder="例如：10.10.38.153"></div>
+    <div class="_shpc-field"><label>SlurmDBD 地址 <span style="color:var(--muted);font-weight:500;">选填</span></label><input id="slurmDBDHost" placeholder="默认与主节点一致"></div>
     <div class="_shpc-field"><label>集群名称</label><input id="slurmClusterName" placeholder="simplehpc"></div>
-    <div class="_shpc-field"><label>Slurm 命令目录</label><input id="slurmBinDir" placeholder="/opt/slurm/current/bin"></div>
+    <div class="_shpc-field" style="grid-column:1 / -1;"><label>Slurm 命令目录</label><input id="slurmBinDir" placeholder="/opt/slurm/current/bin"></div>
+  </div>
+  <div style="margin-top:10px;color:var(--muted);font-size:13px;line-height:1.6;">
+    主节点用于平台对接 Slurm Controller；备节点用于记录 HA/故障切换信息，不填则按单 Controller 集群处理。
+  </div>
+
+  <div style="height:1px;background:var(--border);margin:22px 0;"></div>
+
+  <div class="card-title" style="font-size:18px;">Slurm MySQL 数据库（选填）</div>
+  <div style="display:grid;grid-template-columns:1fr 160px 1fr 1fr;gap:16px;">
+    <div class="_shpc-field"><label>数据库 IP</label><input id="slurmMysqlHost" placeholder="例如：10.10.38.152"></div>
+    <div class="_shpc-field"><label>端口</label><input id="slurmMysqlPort" inputmode="numeric" placeholder="3306"></div>
+    <div class="_shpc-field"><label>数据库管理员账号</label><input id="slurmMysqlAdminUser" autocomplete="off" placeholder="例如：root"></div>
+    <div class="_shpc-field"><label>管理员密码</label><input id="slurmMysqlAdminPassword" type="password" autocomplete="new-password" placeholder="请输入管理员密码"></div>
+  </div>
+  <div style="margin-top:10px;color:var(--muted);font-size:13px;line-height:1.6;">
+    MySQL 配置用于后续对接 SlurmDBD 后端数据库。该配置非必填；密码保存后不会在页面回显，留空保存时保持原密码不变。
   </div>
   <div style="margin-top:18px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
     <button class="btn btn-ghost" id="slurmTestBtn">测试连接</button>
@@ -86,17 +103,33 @@
 (function () {
   const fields = {
     controllerHost: document.getElementById('slurmControllerHost'),
+    backupControllerHost: document.getElementById('slurmControllerBackupHost'),
     dbdHost: document.getElementById('slurmDBDHost'),
     clusterName: document.getElementById('slurmClusterName'),
-    binDir: document.getElementById('slurmBinDir')
+    binDir: document.getElementById('slurmBinDir'),
+    mysqlHost: document.getElementById('slurmMysqlHost'),
+    mysqlPort: document.getElementById('slurmMysqlPort'),
+    mysqlAdminUser: document.getElementById('slurmMysqlAdminUser'),
+    mysqlAdminPassword: document.getElementById('slurmMysqlAdminPassword')
   };
   const state = document.getElementById('slurmConfigState');
   function payload() {
+    const controllerHost = fields.controllerHost.value.trim();
+    if (!controllerHost) {
+      throw new Error('Slurm Controller 主节点地址不能为空');
+    }
     return {
-      controllerHost: fields.controllerHost.value.trim(),
+      controllerHost,
+      backupControllerHost: fields.backupControllerHost.value.trim(),
       dbdHost: fields.dbdHost.value.trim(),
       clusterName: fields.clusterName.value.trim(),
-      binDir: fields.binDir.value.trim()
+      binDir: fields.binDir.value.trim(),
+      mysql: {
+        host: fields.mysqlHost.value.trim(),
+        port: fields.mysqlPort.value.trim(),
+        adminUser: fields.mysqlAdminUser.value.trim(),
+        adminPassword: fields.mysqlAdminPassword.value
+      }
     };
   }
   async function request(url, options) {
@@ -109,10 +142,17 @@
     try {
       const data = await request('/api/v1/config/slurm');
       const cfg = data.config || {};
+      const mysql = cfg.mysql || {};
       fields.controllerHost.value = cfg.controllerHost || '';
+      fields.backupControllerHost.value = cfg.backupControllerHost || '';
       fields.dbdHost.value = cfg.dbdHost || '';
       fields.clusterName.value = cfg.clusterName || '';
       fields.binDir.value = cfg.binDir || '';
+      fields.mysqlHost.value = mysql.host || '';
+      fields.mysqlPort.value = mysql.port || '';
+      fields.mysqlAdminUser.value = mysql.adminUser || '';
+      fields.mysqlAdminPassword.value = '';
+      fields.mysqlAdminPassword.placeholder = mysql.passwordConfigured ? '已配置，留空保持不变' : '请输入管理员密码';
       state.textContent = '配置来自后端 API';
     } catch (err) {
       state.textContent = '数据未获取：' + err.message;

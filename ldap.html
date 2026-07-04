@@ -64,12 +64,16 @@
   </header>
   <main class="main">
 <div class="card">
-  <div class="card-title">LDAP Server 配置</div>
+  <div class="card-title">LDAP Server 高可用配置</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-    <div class="_shpc-field"><label>服务器地址</label><input id="ldapUrl" placeholder="ldap://10.10.38.152:389"></div>
+    <div class="_shpc-field"><label>LDAP 主节点地址 <span style="color:var(--danger);">*</span></label><input id="ldapUrl" placeholder="ldap://10.10.38.152:389" required></div>
+    <div class="_shpc-field"><label>LDAP 备节点地址 <span style="color:var(--muted);font-weight:500;">选填</span></label><input id="ldapBackupUrl" placeholder="ldap://10.10.38.153:389"></div>
     <div class="_shpc-field"><label>Base DN</label><input id="ldapBaseDN" placeholder="dc=simplehpc,dc=local"></div>
     <div class="_shpc-field"><label>Bind DN</label><input id="ldapBindDN" placeholder="cn=admin,dc=simplehpc,dc=local"></div>
-    <div class="_shpc-field"><label>Bind 密码</label><input id="ldapBindPassword" type="password" placeholder="留空表示不修改已保存密码"></div>
+    <div class="_shpc-field" style="grid-column:1 / -1;"><label>Bind 密码</label><input id="ldapBindPassword" type="password" autocomplete="new-password" placeholder="留空表示不修改已保存密码"></div>
+  </div>
+  <div style="margin-top:10px;color:var(--muted);font-size:13px;line-height:1.6;">
+    主节点用于平台 LDAP 认证和账号同步；备节点用于记录高可用备用地址，未配置时按单 LDAP Server 处理。
   </div>
   <div style="margin-top:18px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
     <button class="btn btn-ghost" id="ldapTestBtn">测试连接</button>
@@ -86,21 +90,27 @@
 (function () {
   const fields = {
     url: document.getElementById('ldapUrl'),
+    backupUrl: document.getElementById('ldapBackupUrl'),
     baseDN: document.getElementById('ldapBaseDN'),
     bindDN: document.getElementById('ldapBindDN'),
     bindPassword: document.getElementById('ldapBindPassword')
   };
   const state = document.getElementById('ldapConfigState');
   function payload() {
+    const url = fields.url.value.trim();
+    if (!url) {
+      throw new Error('LDAP 主节点地址不能为空');
+    }
     return {
-      url: fields.url.value.trim(),
+      url,
+      backupUrl: fields.backupUrl.value.trim(),
       baseDN: fields.baseDN.value.trim(),
       bindDN: fields.bindDN.value.trim(),
       bindPassword: fields.bindPassword.value
     };
   }
   async function request(url, options) {
-    const res = await fetch(url, Object.assign({ headers: { 'Content-Type': 'application/json' }, cache: 'no-store' }, options || {}));
+    const res = await App.apiFetch(url, Object.assign({ headers: { 'Content-Type': 'application/json' }, cache: 'no-store' }, options || {}));
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
     return data;
@@ -110,9 +120,11 @@
       const data = await request('/api/v1/config/ldap');
       const cfg = data.config || {};
       fields.url.value = cfg.url || '';
+      fields.backupUrl.value = cfg.backupUrl || '';
       fields.baseDN.value = cfg.baseDN || '';
       fields.bindDN.value = cfg.bindDN || '';
       fields.bindPassword.value = '';
+      fields.bindPassword.placeholder = cfg.passwordConfigured ? '已配置，留空保持不变' : '请输入 Bind 密码';
       state.textContent = '配置来自后端 API';
     } catch (err) {
       state.textContent = '数据未获取：' + err.message;

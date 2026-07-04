@@ -217,5 +217,6 @@ go test ./...
 
 ## 当前版本
 
-当前版本变更见：[CHANGELOG.md](CHANGELOG.md)。
+当前版本：`v0.2.1`。
 
+当前版本变更见：[CHANGELOG.md](CHANGELOG.md)。

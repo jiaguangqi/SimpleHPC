@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/smtp"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -1313,8 +1314,12 @@ func (api *API) getSlurmConfig(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	value = sanitizeSlurmConfigForResponse(value)
 	if value["controllerHost"] == nil {
 		value["controllerHost"] = primaryIPv4()
+	}
+	if value["backupControllerHost"] == nil {
+		value["backupControllerHost"] = ""
 	}
 	if value["dbdHost"] == nil {
 		value["dbdHost"] = value["controllerHost"]
@@ -1325,6 +1330,9 @@ func (api *API) getSlurmConfig(c *gin.Context) {
 	if value["binDir"] == nil {
 		value["binDir"] = api.services.Slurm.BinDir
 	}
+	if value["mysql"] == nil {
+		value["mysql"] = map[string]any{}
+	}
 	c.JSON(http.StatusOK, gin.H{"config": value})
 }
 
@@ -1334,7 +1342,16 @@ func (api *API) saveSlurmConfig(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	payload = compactConfig(payload)
+	saved, _, err := api.services.GetSystemConfig(c.Request.Context(), "slurm")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	payload, err = normalizeSlurmConfig(saved, compactConfig(payload))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	if binDir, ok := payload["binDir"].(string); ok && strings.TrimSpace(binDir) != "" {
 		api.services.Slurm.BinDir = strings.TrimSpace(binDir)
 	}
@@ -1351,6 +1368,10 @@ func (api *API) saveSlurmConfig(c *gin.Context) {
 func (api *API) testSlurmConfig(c *gin.Context) {
 	var payload map[string]any
 	_ = c.ShouldBindJSON(&payload)
+	if _, err := normalizeSlurmConfig(nil, compactConfig(payload)); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	if binDir, ok := payload["binDir"].(string); ok && strings.TrimSpace(binDir) != "" {
 		api.services.Slurm.BinDir = strings.TrimSpace(binDir)
 	}
@@ -1361,14 +1382,146 @@ func (api *API) testSlurmConfig(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
+func normalizeSlurmConfig(saved, incoming map[string]any) (map[string]any, error) {
+	out := map[string]any{}
+	for key, value := range saved {
+		out[key] = value
+	}
+	for key, value := range incoming {
+		out[key] = value
+	}
+
+	controllerHost := configText(out["controllerHost"])
+	if controllerHost == "" {
+		return nil, fmt.Errorf("Slurm Controller 主节点地址不能为空")
+	}
+	if err := validateTerminalHost(controllerHost); err != nil {
+		return nil, fmt.Errorf("Slurm Controller 主节点地址无效：%w", err)
+	}
+	out["controllerHost"] = controllerHost
+
+	if backupHost := configText(out["backupControllerHost"]); backupHost != "" {
+		if err := validateTerminalHost(backupHost); err != nil {
+			return nil, fmt.Errorf("Slurm Controller 备节点地址无效：%w", err)
+		}
+		out["backupControllerHost"] = backupHost
+	} else {
+		delete(out, "backupControllerHost")
+	}
+
+	if dbdHost := configText(out["dbdHost"]); dbdHost != "" {
+		if err := validateTerminalHost(dbdHost); err != nil {
+			return nil, fmt.Errorf("SlurmDBD 地址无效：%w", err)
+		}
+		out["dbdHost"] = dbdHost
+	} else {
+		delete(out, "dbdHost")
+	}
+
+	if clusterName := configText(out["clusterName"]); clusterName != "" {
+		out["clusterName"] = clusterName
+	} else {
+		delete(out, "clusterName")
+	}
+	if binDir := configText(out["binDir"]); binDir != "" {
+		out["binDir"] = binDir
+	} else {
+		delete(out, "binDir")
+	}
+
+	incomingMySQL, incomingHasMySQL := incoming["mysql"]
+	if incomingHasMySQL && len(configMap(incomingMySQL)) == 0 {
+		delete(out, "mysql")
+		return out, nil
+	}
+	mysql, hasMySQL, err := normalizeSlurmMySQLConfig(configMap(saved["mysql"]), configMap(incomingMySQL))
+	if err != nil {
+		return nil, err
+	}
+	if hasMySQL {
+		out["mysql"] = mysql
+	} else {
+		delete(out, "mysql")
+	}
+	return out, nil
+}
+
+func normalizeSlurmMySQLConfig(saved, incoming map[string]any) (map[string]any, bool, error) {
+	merged := map[string]any{}
+	for key, value := range saved {
+		merged[key] = value
+	}
+	for key, value := range incoming {
+		merged[key] = value
+	}
+	host := configText(merged["host"])
+	port := configText(merged["port"])
+	adminUser := configText(merged["adminUser"])
+	adminPassword := configText(merged["adminPassword"])
+
+	if host == "" && port == "" && adminUser == "" && adminPassword == "" {
+		return nil, false, nil
+	}
+	if host == "" {
+		return nil, false, fmt.Errorf("Slurm MySQL 数据库 IP 不能为空")
+	}
+	if err := validateTerminalHost(host); err != nil {
+		return nil, false, fmt.Errorf("Slurm MySQL 数据库 IP 无效：%w", err)
+	}
+	if port == "" {
+		port = "3306"
+	}
+	portNumber, err := strconv.Atoi(port)
+	if err != nil || portNumber < 1 || portNumber > 65535 {
+		return nil, false, fmt.Errorf("Slurm MySQL 数据库端口必须为 1-65535")
+	}
+
+	result := map[string]any{
+		"host":      host,
+		"port":      strconv.Itoa(portNumber),
+		"adminUser": adminUser,
+	}
+	if adminPassword != "" {
+		result["adminPassword"] = adminPassword
+	}
+	return result, true, nil
+}
+
+func sanitizeSlurmConfigForResponse(input map[string]any) map[string]any {
+	out := map[string]any{}
+	for key, value := range input {
+		out[key] = value
+	}
+	mysql := configMap(input["mysql"])
+	if len(mysql) == 0 {
+		return out
+	}
+	safeMySQL := map[string]any{}
+	for key, value := range mysql {
+		if key == "adminPassword" {
+			if configText(value) != "" {
+				safeMySQL["passwordConfigured"] = true
+			}
+			continue
+		}
+		safeMySQL[key] = value
+	}
+	out["mysql"] = safeMySQL
+	return out
+}
+
 func (api *API) getLDAPConfig(c *gin.Context) {
 	value, _, err := api.services.GetSystemConfig(c.Request.Context(), "ldap")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	value = sanitizeLDAPConfigForResponse(value)
 	if value["url"] == nil {
 		value["url"] = api.services.LDAP.URL
+	}
+	if value["backupUrl"] == nil {
+		value["backupUrl"] = ""
 	}
 	if value["baseDN"] == nil {
 		value["baseDN"] = api.services.LDAP.BaseDN
@@ -1376,7 +1529,6 @@ func (api *API) getLDAPConfig(c *gin.Context) {
 	if value["bindDN"] == nil {
 		value["bindDN"] = api.services.LDAP.AdminDN
 	}
-	value["bindPassword"] = ""
 	c.JSON(http.StatusOK, gin.H{"config": value})
 }
 
@@ -1386,7 +1538,16 @@ func (api *API) saveLDAPConfig(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	payload = compactConfig(payload)
+	saved, _, err := api.services.GetSystemConfig(c.Request.Context(), "ldap")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	payload, err = normalizeLDAPConfig(saved, compactConfig(payload))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	if value, ok := payload["url"].(string); ok && strings.TrimSpace(value) != "" {
 		api.services.LDAP.URL = strings.TrimSpace(value)
 	}
@@ -1396,10 +1557,8 @@ func (api *API) saveLDAPConfig(c *gin.Context) {
 	if value, ok := payload["bindDN"].(string); ok && strings.TrimSpace(value) != "" {
 		api.services.LDAP.AdminDN = strings.TrimSpace(value)
 	}
-	if value, ok := payload["bindPassword"].(string); ok && strings.TrimSpace(value) != "" && !strings.Contains(value, "*") {
+	if value, ok := payload["bindPassword"].(string); ok && strings.TrimSpace(value) != "" {
 		api.services.LDAP.AdminPassword = value
-	} else {
-		delete(payload, "bindPassword")
 	}
 	if err := api.services.SetSystemConfig(c.Request.Context(), "ldap", payload); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -1411,23 +1570,28 @@ func (api *API) saveLDAPConfig(c *gin.Context) {
 func (api *API) testLDAPConfig(c *gin.Context) {
 	var payload map[string]any
 	_ = c.ShouldBindJSON(&payload)
+	normalized, err := normalizeLDAPConfig(nil, compactConfig(payload))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	backupURL := api.services.LDAP.URL
 	backupBase := api.services.LDAP.BaseDN
 	backupDN := api.services.LDAP.AdminDN
 	backupPassword := api.services.LDAP.AdminPassword
-	if value, ok := payload["url"].(string); ok && strings.TrimSpace(value) != "" {
+	if value, ok := normalized["url"].(string); ok && strings.TrimSpace(value) != "" {
 		api.services.LDAP.URL = strings.TrimSpace(value)
 	}
-	if value, ok := payload["baseDN"].(string); ok && strings.TrimSpace(value) != "" {
+	if value, ok := normalized["baseDN"].(string); ok && strings.TrimSpace(value) != "" {
 		api.services.LDAP.BaseDN = strings.TrimSpace(value)
 	}
-	if value, ok := payload["bindDN"].(string); ok && strings.TrimSpace(value) != "" {
+	if value, ok := normalized["bindDN"].(string); ok && strings.TrimSpace(value) != "" {
 		api.services.LDAP.AdminDN = strings.TrimSpace(value)
 	}
-	if value, ok := payload["bindPassword"].(string); ok && strings.TrimSpace(value) != "" && !strings.Contains(value, "*") {
+	if value, ok := normalized["bindPassword"].(string); ok && strings.TrimSpace(value) != "" {
 		api.services.LDAP.AdminPassword = value
 	}
-	err := api.services.LDAP.Ping()
+	err = api.services.LDAP.Ping()
 	api.services.LDAP.URL = backupURL
 	api.services.LDAP.BaseDN = backupBase
 	api.services.LDAP.AdminDN = backupDN
@@ -1437,6 +1601,88 @@ func (api *API) testLDAPConfig(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+func normalizeLDAPConfig(saved, incoming map[string]any) (map[string]any, error) {
+	out := map[string]any{}
+	for key, value := range saved {
+		out[key] = value
+	}
+	for key, value := range incoming {
+		out[key] = value
+	}
+	primaryURL := configText(out["url"])
+	if primaryURL == "" {
+		return nil, fmt.Errorf("LDAP 主节点地址不能为空")
+	}
+	if err := validateLDAPURL(primaryURL); err != nil {
+		return nil, fmt.Errorf("LDAP 主节点地址无效：%w", err)
+	}
+	out["url"] = primaryURL
+
+	if backupURL := configText(out["backupUrl"]); backupURL != "" {
+		if err := validateLDAPURL(backupURL); err != nil {
+			return nil, fmt.Errorf("LDAP 备节点地址无效：%w", err)
+		}
+		out["backupUrl"] = backupURL
+	} else {
+		delete(out, "backupUrl")
+	}
+
+	if baseDN := configText(out["baseDN"]); baseDN != "" {
+		out["baseDN"] = baseDN
+	} else {
+		delete(out, "baseDN")
+	}
+	if bindDN := configText(out["bindDN"]); bindDN != "" {
+		out["bindDN"] = bindDN
+	} else {
+		delete(out, "bindDN")
+	}
+	if bindPassword := configText(out["bindPassword"]); bindPassword != "" && !strings.Contains(bindPassword, "*") {
+		out["bindPassword"] = bindPassword
+	} else if savedPassword := configText(saved["bindPassword"]); savedPassword != "" {
+		out["bindPassword"] = savedPassword
+	} else {
+		delete(out, "bindPassword")
+	}
+	return out, nil
+}
+
+func validateLDAPURL(raw string) error {
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Host == "" {
+		return fmt.Errorf("必须为 ldap://host:port 或 ldaps://host:port")
+	}
+	if parsed.Scheme != "ldap" && parsed.Scheme != "ldaps" {
+		return fmt.Errorf("协议必须为 ldap 或 ldaps")
+	}
+	host := parsed.Hostname()
+	if err := validateTerminalHost(host); err != nil {
+		return err
+	}
+	if port := parsed.Port(); port != "" {
+		portNumber, err := strconv.Atoi(port)
+		if err != nil || portNumber < 1 || portNumber > 65535 {
+			return fmt.Errorf("端口必须为 1-65535")
+		}
+	}
+	return nil
+}
+
+func sanitizeLDAPConfigForResponse(input map[string]any) map[string]any {
+	out := map[string]any{}
+	for key, value := range input {
+		if key == "bindPassword" {
+			if configText(value) != "" {
+				out["passwordConfigured"] = true
+			}
+			continue
+		}
+		out[key] = value
+	}
+	out["bindPassword"] = ""
+	return out
 }
 
 func (api *API) getNotifyConfig(c *gin.Context) {
@@ -2100,6 +2346,33 @@ func compactConfig(input map[string]any) map[string]any {
 		}
 	}
 	return out
+}
+
+func configMap(value any) map[string]any {
+	if typed, ok := value.(map[string]any); ok {
+		return typed
+	}
+	return nil
+}
+
+func configText(value any) string {
+	switch typed := value.(type) {
+	case string:
+		return strings.TrimSpace(typed)
+	case int:
+		return strconv.Itoa(typed)
+	case int64:
+		return strconv.FormatInt(typed, 10)
+	case float64:
+		if typed == float64(int64(typed)) {
+			return strconv.FormatInt(int64(typed), 10)
+		}
+		return strings.TrimSpace(strconv.FormatFloat(typed, 'f', -1, 64))
+	case json.Number:
+		return strings.TrimSpace(typed.String())
+	default:
+		return ""
+	}
 }
 
 func mergeNotifyConfig(saved, incoming map[string]any) map[string]any {

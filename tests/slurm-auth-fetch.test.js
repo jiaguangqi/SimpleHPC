@@ -21,6 +21,28 @@ test('slurm pages use authenticated API fetches', () => {
   }
 });
 
+test('slurm config page exposes primary standby and optional mysql fields', () => {
+  const source = fs.readFileSync(path.join(root, 'slurm.html'), 'utf8');
+  assert.match(source, /Controller 主节点/);
+  assert.match(source, /Controller 备节点/);
+  assert.match(source, /Slurm MySQL 数据库（选填）/);
+  assert.match(source, /slurmControllerBackupHost/);
+  assert.match(source, /slurmMysqlHost/);
+  assert.match(source, /slurmMysqlPort/);
+  assert.match(source, /slurmMysqlAdminUser/);
+  assert.match(source, /slurmMysqlAdminPassword/);
+});
+
+test('ldap config page exposes primary and standby ldap server fields', () => {
+  const source = fs.readFileSync(path.join(root, 'ldap.html'), 'utf8');
+  assert.doesNotMatch(source, /fetch\(url/);
+  assert.match(source, /App\.apiFetch\(url/);
+  assert.match(source, /LDAP 主节点地址/);
+  assert.match(source, /LDAP 备节点地址/);
+  assert.match(source, /ldapBackupUrl/);
+  assert.match(source, /passwordConfigured/);
+});
+
 test('live node helper uses authenticated fetch when available', () => {
   const source = fs.readFileSync(path.join(root, 'js', 'live.js'), 'utf8');
   assert.match(source, /App\.apiFetch/);
