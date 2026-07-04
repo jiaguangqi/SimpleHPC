@@ -239,6 +239,73 @@ body.shpc-sample-page .nav-submenu-item.active {
     url("../assets/images/bg-dashboard.svg");
 }
 
+.shpc-dashboard-page .shpc-tech-hero {
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, .72fr);
+  min-height: 118px;
+  margin-bottom: 14px;
+  padding: 18px 22px;
+  gap: 18px;
+  border-radius: 22px;
+  background-size: auto 118%;
+}
+
+.shpc-dashboard-page .shpc-tech-hero::before {
+  opacity: .48;
+}
+
+.shpc-dashboard-page .shpc-tech-hero-kicker {
+  gap: 7px;
+  font-size: 10px;
+  letter-spacing: .14em;
+}
+
+.shpc-dashboard-page .shpc-tech-hero .shpc-hero-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.shpc-dashboard-page .shpc-tech-hero h2 {
+  margin: 8px 0 6px;
+  font-size: clamp(24px, 1.75vw, 31px);
+  line-height: 1.05;
+}
+
+.shpc-dashboard-page .shpc-tech-hero p {
+  max-width: 780px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.shpc-dashboard-page .shpc-hero-metrics {
+  gap: 9px;
+}
+
+.shpc-dashboard-page .shpc-hero-metric {
+  min-height: 48px;
+  padding: 10px 12px;
+  border-radius: 15px;
+}
+
+.shpc-dashboard-page .shpc-hero-metric strong {
+  font-size: 18px;
+  line-height: 1.05;
+}
+
+.shpc-dashboard-page .shpc-hero-metric span {
+  display: block;
+  margin-top: 5px;
+  font-size: 10px;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .shpc-rbac-page .shpc-tech-hero,
 .shpc-rbac-page .rbac-hero {
   background-image:

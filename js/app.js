@@ -649,7 +649,7 @@
     if (window.App?.authz) return run();
     document.documentElement.classList.add('rbac-pending');
     const script = document.createElement('script');
-    script.src = 'js/rbac.js?v=20260703flicker';
+    script.src = 'js/rbac.js?v=20260704favnav';
     script.onload = run;
     script.onerror = () => {
       document.documentElement.classList.remove('rbac-pending');

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
 <title>simpleHPC — 平台设置</title>
-<link rel="stylesheet" href="css/theme.css?v=20260703profile">
+<link rel="stylesheet" href="css/theme.css?v=20260705navdrop2">
 </head>
 <body>
 <div class="layout">
@@ -63,7 +63,7 @@
     </div>
   </header>
   <main class="main">
-<div class="card">
+    <div class="card">
       <div class="card-title">平台基础信息</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
         <div class="_shpc-field"><label>平台名称</label><input id="platformName"></div>
@@ -73,11 +73,37 @@
       </div>
       <div style="margin-top:18px;"><button class="btn btn-primary" id="savePlatformSettings">保存设置</button></div>
     </div>
+    <div class="card" style="margin-top:16px;">
+      <div class="card-title">登录节点设置</div>
+      <div class="card-subtitle">用于 WebSSH 新建终端时选择可登录节点；支持轮询和最少会话两种分配策略。</div>
+      <div style="display:grid;grid-template-columns:240px 1fr;gap:16px;align-items:start;margin-top:16px;">
+        <div class="_shpc-field">
+          <label>终端分配策略</label>
+          <select id="terminalStrategy">
+            <option value="round_robin">轮询分配</option>
+            <option value="least_sessions">负载均衡：最少会话</option>
+          </select>
+          <div style="font-size:12px;color:var(--muted);margin-top:6px">轮询适合节点性能接近；最少会话适合并发终端较多时分散连接。</div>
+        </div>
+        <div>
+          <div class="table-wrap">
+            <table class="file-table">
+              <thead><tr><th>启用</th><th>主机名</th><th>IP / 地址</th><th>操作</th></tr></thead>
+              <tbody id="terminalNodeRows"><tr><td colspan="4">正在读取登录节点配置...</td></tr></tbody>
+            </table>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:10px;">
+            <button class="btn btn-ghost" type="button" id="addTerminalNode">添加登录节点</button>
+            <button class="btn btn-primary" type="button" id="saveTerminalSettings">保存登录节点设置</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <div style="height:40px;"></div>
   </main>
 </div>
 
-<script src="js/settings.js?v=20260630"></script>
-<script src="js/app.js?v=20260703profile"></script>
+<script src="js/settings.js?v=20260704loginroles"></script>
+<script src="js/app.js?v=20260704favnav"></script>
 </body>
 </html>

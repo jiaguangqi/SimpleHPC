@@ -1,64 +1,62 @@
-# macOS / editor
+# OS / editor noise
 .DS_Store
-._*
-.idea/
-.vscode/
+Thumbs.db
 *.swp
+*.swo
+*~
 
-# Environment and secrets
+# Local environment and secrets
 .env
 .env.*
 !.env.example
-*.local
-*.local.*
+!backend/.env.example
 docs/*.local.md
 *.pem
 *.key
-*.crt
 *.p12
 *.pfx
 id_rsa*
+id_dsa*
 id_ed25519*
 
-# Runtime data
-data/
-uploads/
-logs/
+# Runtime data, logs and temporary files
 tmp/
 temp/
-backups/
-.deploy-backups/
-releases/
-rbac-shadow-*.txt
-rbac-shadow-*.log
-.rbac-*
-slurm-*.out
-slurm-*.err
+logs/
+*.log
+*.pid
+*.sock
+*.out
+*.err
 
-# Build artifacts
-bin/
+# Build and test artifacts
 dist/
 build/
 .build/
 coverage/
-*.test
-*.prof
-*.pprof
-simplehpc-backend
-backend/simplehpc-backend*
-backend/dist/
+.nyc_output/
+.playwright-cli/
+.superpowers/
 backend/server
+backend/simplehpc-backend
+backend/dist/
+backend/*.test
+*.test
 
 # Archives and database dumps
-*.dump
-*.sql.gz
-*.tgz
 *.tar
 *.tar.gz
+*.tgz
 *.zip
-
-# Historical backup files
+*.7z
+*.gz
+*.dump
 *.bak
+*.db
+*.sqlite
+*.sqlite3
+
+# Generated backup files
 *.bak-*
-*.bak-codex-*
-*~
+*.backup
+*.orig

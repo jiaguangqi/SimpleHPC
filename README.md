@@ -1,198 +1,167 @@
 # SimpleHPC
 
-SimpleHPC 是一套面向 HPC / 智算集群的轻量级集群管理、作业调度、数据目录和运维管理平台。当前版本已经在测试服务器完成 RBAC enforce 模式验证，覆盖 Slurm、LDAP、PostgreSQL、Redis、文件目录边界、VNC 桌面作业和巡检报告等核心能力。
+SimpleHPC 是一套面向高校、科研院所、超算/智算中心的小型 HPC 集群管理与作业调度平台。系统围绕 Slurm、LDAP、共享存储、WebSSH、VNC 桌面和 RBAC 权限体系构建，目标是让集群管理员、团队负责人和普通用户可以通过 Web 页面完成日常集群使用与运维管理。
 
-> 当前仓库是清理后的源码仓库，不包含服务器运行数据、数据库 dump、备份目录、上传文件、二进制构建产物和生产密钥。
+> 当前仓库版本定位：测试环境验证版，已在测试服务器完成 RBAC enforce 模式验证。生产环境切换仍需要单独评审和部署窗口。
 
-## 主要能力
+## 核心能力
 
-### 1. 集群仪表盘
+### 1. 集群驾驶舱
 
-- 集群资源概览；
-- 在线用户、作业、队列、存储等关键指标展示；
-- CPU / GPU 资源使用趋势；
-- 资源池作业趋势，支持按 Slurm partition 和时间范围查看运行 / 排队作业趋势；
-- 普通用户视角下只展示本人可见的数据摘要。
+- 在线用户、运行作业、排队作业、存储使用等关键指标概览。
+- 集群资源使用趋势，展示 CPU/GPU 平均利用率。
+- 资源池作业趋势，按 Slurm partition 展示运行作业和排队作业趋势。
+- 浅色 Apple-style SaaS UI，适合日常运维和客户展示。
 
 ### 2. Slurm 作业管理
 
-- 作业列表、状态、详情和输出查看；
-- 作业模板提交；
-- Shell 非交互式作业模板；
-- noVNC Linux 桌面作业模板；
-- 作业 stdout / stderr 在线查看与刷新；
-- Slurm 队列状态、节点状态、分区配置、QOS 策略展示与管理；
-- 普通用户只能查看本人作业，管理员按 RBAC 数据范围查看全局 / 单位 / 团队作业。
+- 队列状态、节点状态、QOS 策略、资源队列配置。
+- 作业列表、作业详情、stdout/stderr 输出查看。
+- 作业模板提交，支持 Shell、VNC/noVNC 等模板。
+- VNC 作业可通过 noVNC 在线访问计算节点桌面。
+- 作业资源、工作目录、输出文件与 Slurm 实际状态对齐。
 
-### 3. noVNC 桌面作业
+### 3. WebSSH 终端中心
 
-- 通过 Slurm 在计算节点启动 VNC 桌面；
-- 支持设置桌面运行时间、分辨率和桌面环境；
-- 平台中查看 VNC 桌面任务并在线访问；
-- VNC 作业要求提交账号与 Linux / LDAP 用户映射一致；
-- 支持 VNC 作业访问网关和令牌化访问。
+- 浏览器内创建真实 SSH 终端会话。
+- 使用 xterm.js 支持交互式命令、vim 等全屏终端程序。
+- 会话持久化，刷新页面后可恢复已创建终端标签。
+- 登录节点由系统设置配置，仅被标记为登录节点的主机可被分配。
+- 支持登录节点轮询分配和负载均衡策略。
+- 左侧内置轻量文件管理器，支持授权目录浏览、上传、下载和打包下载。
 
-### 4. 账户、单位、团队管理
+### 4. 数据目录与文件安全
 
-- 单位管理；
-- 团队 / 用户组管理；
-- 用户管理；
-- 管理员账号管理；
-- 新建用户组向导支持创建团队与组长首用户；
-- 用户创建时联动 LDAP、Linux 用户、家目录、默认环境和 SSH 互信初始化；
-- 支持团队默认资源策略和存储目录授权。
+- 支持多个授权存储根目录，例如 `/data/home`、`/data/share`、`/data/recycle`、`/data/scratch`。
+- 普通用户访问边界固定为 `/授权目录/{username}`。
+- 后端统一校验列表、上传、下载、删除、复制、移动、重命名、打包下载等文件操作。
+- 防路径穿越、URL 编码绕过、符号链接逃逸和归档逃逸。
+- 管理员可查看授权根目录，普通用户不能看到其他用户目录。
 
 ### 5. RBAC 权限体系
 
-当前版本支持内置角色与自定义角色共存：
+- 支持内置角色和自定义角色共存。
+- 内置角色包括：
+  - `cluster_admin` 集群管理员
+  - `config_admin` 配置管理员
+  - `unit_admin` 单位管理员
+  - `team_admin` 团队管理员
+  - `user` 普通用户
+- 支持菜单权限、路由权限、按钮权限、接口权限、数据范围权限、文件目录策略。
+- 多角色按启用角色权限取并集，数据范围按 `global > unit > team > self/granted > none` 合并。
+- 支持权限矩阵、角色复制、角色禁用、用户绑定。
+- 当前测试服务器已完成 `RBAC_MODE=enforce` 验证。
 
-- `cluster_admin`：集群管理员，全局最高权限；
-- `config_admin`：配置管理员，负责平台和运维配置；
-- `unit_admin`：单位管理员，管理本单位范围数据；
-- `team_admin`：团队管理员，管理本团队范围数据；
-- `user`：普通用户，仅访问本人数据。
+### 6. 账户、团队与 LDAP 集成
 
-RBAC 覆盖：
+- 管理员账号、LDAP 用户、单位、团队管理。
+- 新建用户组采用向导流程：先创建团队，再创建组长账号。
+- 组长默认绑定 `team_admin`，并作为团队第一个成员。
+- 用户创建后可自动准备家目录、默认环境文件和 SSH 免密基础配置。
 
-- 菜单权限；
-- 路由权限；
-- 按钮 / 操作权限；
-- API 权限；
-- 数据范围权限；
-- 文件目录访问策略。
+### 7. 巡检、日志与通知
 
-多角色用户按启用角色权限取并集，数据范围按以下优先级合并：
+- 一键巡检生成两类产物：
+  - 精美 HTML 巡检报告，可在线预览和下载。
+  - 详细巡检日志，包含巡检项、命令和输出。
+- 支持飞书机器人通知。
+- 日志中心包括用户登录日志、系统日志、审计日志。
+- 系统日志支持服务来源、时间范围、日志级别和关键字筛选。
+
+### 8. 平台配置
+
+- 平台名称、Logo、登录页图片。
+- LDAP、Slurm、存储、通知、终端登录节点配置。
+- 登录前公共配置接口仅返回平台名称和图片地址。
+- 图片资源保存到服务器资源目录，不使用 Base64 写入数据库。
+
+## 技术架构
 
 ```text
-global > unit > team > self/granted > none
+Browser
+  ├─ HTML/CSS/JavaScript
+  ├─ xterm.js WebSSH
+  └─ noVNC Desktop
+
+Go Backend
+  ├─ Gin HTTP API
+  ├─ RBAC Resolver
+  ├─ Slurm Integration
+  ├─ LDAP Integration
+  ├─ Storage Security Layer
+  ├─ WebSSH Session Manager
+  └─ Inspection / Log / Notification Services
+
+Infrastructure
+  ├─ PostgreSQL
+  ├─ Redis
+  ├─ OpenLDAP
+  ├─ Slurm / SlurmDBD
+  └─ Shared Storage
 ```
-
-文件目录权限是独立安全边界，不会因为菜单权限或普通数据范围扩大而自动突破。
-
-### 6. 文件管理器
-
-- 支持多个授权存储入口；
-- 普通用户授权入口自动映射到 `/授权目录/{username}`；
-- 后端统一校验所有文件操作路径；
-- 支持上传、下载、删除、复制、移动、重命名、打包下载、显示隐藏文件；
-- 防止 `../`、双斜线、URL 编码、绝对路径、软链接逃逸等越权方式；
-- 上一级按钮由后端返回 `effectivePath`、`initialPath`、`canGoParent`、`parentPath` 控制。
-
-### 7. 运维与巡检
-
-- 一键巡检；
-- 输出 HTML 巡检总结报告；
-- 输出详细巡检日志；
-- 报告和日志可在线预览、下载；
-- 支持将巡检报告转换为飞书富文本通知；
-- 监控告警入口；
-- 系统日志、审计日志、用户登录日志。
-
-### 8. 平台设置
-
-- 平台名称；
-- 主页面 Logo 上传；
-- 登录页背景图上传；
-- 登录前公共配置接口；
-- LDAP 配置；
-- Slurm 配置；
-- 存储目录配置；
-- 通知配置。
-
-## 技术栈
-
-### 前端
-
-- 原生 HTML / CSS / JavaScript；
-- 轻量级多页面管理后台；
-- Apple-style 浅色 Web UI；
-- 动态菜单与按钮权限来自 `/api/v1/auth/me`；
-- 登录页、仪表盘、角色管理、文件管理、作业中心等独立页面。
-
-### 后端
-
-- Go；
-- Gin HTTP API；
-- PostgreSQL；
-- Redis；
-- OpenLDAP；
-- Slurm CLI / SlurmDB；
-- Linux 文件系统访问控制；
-- noVNC / websockify / VNC server 集成。
 
 ## 目录结构
 
 ```text
 .
 ├── *.html                         # 前端页面
-├── assets/                        # 图片、图标、Logo
-├── css/                           # 全局样式与视觉效果
-├── js/                            # 前端交互逻辑
-├── tests/                         # Node.js 前端轻量测试
-├── docs/                          # 部署、设计、验收与切换文档
-└── backend/
-    ├── cmd/server/                # 后端入口
-    ├── internal/config/           # 配置加载
-    ├── internal/httpapi/          # HTTP 路由与接口层
-    ├── internal/integrations/     # LDAP / Slurm / Storage 集成
-    ├── internal/service/          # 业务服务与 RBAC 核心逻辑
-    ├── migrations/                # PostgreSQL 迁移脚本
-    └── scripts/                   # 后端辅助脚本
+├── css/                            # 全局主题与视觉样式
+├── js/                             # 前端交互逻辑
+├── assets/                         # 图标、插图、xterm/noVNC 相关静态资源
+├── backend/
+│   ├── cmd/server/                 # Go 后端入口
+│   ├── internal/config/            # 配置加载
+│   ├── internal/httpapi/           # HTTP API 与路由鉴权
+│   ├── internal/integrations/      # LDAP / Slurm / Storage 集成
+│   ├── internal/service/           # 业务服务与 RBAC 内核
+│   ├── migrations/                 # PostgreSQL 迁移脚本
+│   └── scripts/                    # 运维辅助脚本
+├── docs/                           # 设计、部署、RBAC、发版文档
+├── deploy/                         # 部署配置示例
+└── tests/                          # 前端 Node 测试
 ```
 
 ## 快速启动
 
-### 1. 准备依赖
+### 1. 后端配置
 
-需要可用的：
-
-- Go 1.22+；
-- PostgreSQL；
-- Redis；
-- OpenLDAP；
-- Slurm 命令行工具；
-- 可选：VNC server、websockify、noVNC。
-
-### 2. 配置环境变量
+复制环境变量模板：
 
 ```bash
 cd backend
 cp .env.example .env
 ```
 
-编辑 `.env`，至少配置：
+至少需要配置：
 
 ```bash
 SIMPLEHPC_ADDR=:8080
 SIMPLEHPC_PUBLIC_URL=http://127.0.0.1:8080
 SIMPLEHPC_FRONTEND_DIR=..
-
 DATABASE_URL=postgres://simplehpc:CHANGE_ME@127.0.0.1:5432/simplehpc?sslmode=disable
 REDIS_URL=redis://:CHANGE_ME@127.0.0.1:6379/0
-
 LDAP_URL=ldap://127.0.0.1:389
 LDAP_BASE_DN=dc=simplehpc,dc=local
 LDAP_ADMIN_DN=cn=admin,dc=simplehpc,dc=local
 LDAP_ADMIN_PASSWORD=CHANGE_ME
-
 SLURM_BIN_DIR=/opt/slurm/current/bin
 SLURM_CONFIG_PATH=/etc/slurm/slurm.conf
-SLURM_DEFAULT_ACCOUNT=simplehpc
-SLURM_DEFAULT_PARTITION=debug
-
 STORAGE_ROOTS=/data/home,/data/share,/data/recycle,/data/scratch
 RBAC_MODE=shadow
 ```
 
-RBAC 模式说明：
+> `RBAC_MODE` 支持 `legacy`、`shadow`、`enforce`。新环境建议先使用 `shadow` 完成观察，再切换 `enforce`。
 
-| 模式 | 用途 |
-|---|---|
-| `legacy` | 旧权限模式 |
-| `shadow` | 新旧权限双读对比，不强制拒绝 |
-| `enforce` | 新 RBAC 强制生效 |
+### 2. 数据库迁移
 
-生产环境切换到 `enforce` 前应先完成 shadow 观察和回归验证。
+迁移脚本位于 `backend/migrations/`，按编号顺序执行：
+
+```bash
+psql "$DATABASE_URL" -f backend/migrations/001_init.sql
+psql "$DATABASE_URL" -f backend/migrations/002_rbac_schema.sql
+psql "$DATABASE_URL" -f backend/migrations/003_rbac_seed.sql
+# 按编号继续执行后续迁移
+```
 
 ### 3. 启动后端
 
@@ -210,72 +179,43 @@ go run ./cmd/server
 http://127.0.0.1:8080/login.html
 ```
 
-健康检查：
-
-```bash
-curl http://127.0.0.1:8080/api/health
-```
+不要直接用 `file://.../login.html` 方式登录；登录、权限和页面数据都需要后端 API。
 
 ## 测试
 
-### 后端测试
+### 前端 Node 测试
+
+```bash
+node tests/rbac-frontend.test.js
+node tests/terminal-page.test.js
+node tests/session-ui.test.js
+node tests/storage-boundary-ui.test.js
+```
+
+也可以运行全部前端测试：
+
+```bash
+node --test tests/*.test.js
+```
+
+### 后端 Go 测试
 
 ```bash
 cd backend
 go test ./...
 ```
 
-### 前端轻量测试
+## 安全与版本管理约定
 
-```bash
-node --test tests/*.test.js
-```
+- 不提交 `.env`、真实密码、密钥、数据库 dump、运行日志和构建二进制。
+- 所有新增接口必须登记 RBAC 权限点。
+- 文件操作必须走后端路径校验，前端不能自行拼接越权路径。
+- RBAC 从 `shadow` 切换到 `enforce` 前必须完成差异清零和回归验证。
+- 生产切换必须单独提交切换方案，不直接复用测试环境操作。
 
-## 部署说明
+详细发版流程见：[docs/RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md)。
 
-部署文档参考：
+## 当前版本
 
-- [后端服务部署说明](docs/BACKEND_SERVICES_DEPLOYMENT.md)
-- [RBAC 测试服务器 enforce 验收报告](docs/RBAC_TEST_ENFORCE_ACCEPTANCE_REPORT.md)
-- [生产 RBAC enforce 切换方案](docs/PRODUCTION_RBAC_ENFORCE_SWITCH_PLAN.md)
+当前版本变更见：[CHANGELOG.md](CHANGELOG.md)。
 
-### 测试服务器当前验证状态
-
-测试服务器已完成 `RBAC_MODE=enforce` 验证：
-
-- 服务状态：active；
-- PostgreSQL / Redis / LDAP / Slurm 健康检查正常；
-- 关键回归 `failures=0`；
-- 普通用户菜单、文件目录边界、Slurm 管理接口、作业列表、VNC、中间管理员只读角色权限、`cluster_admin` 管理权限均验证通过。
-
-生产环境尚未切换到 enforce。生产切换需要单独评审和批准。
-
-## 安全说明
-
-仓库不应提交以下内容：
-
-- `.env`；
-- 数据库 dump；
-- 运行日志；
-- 用户上传文件；
-- 服务器备份目录；
-- 编译后二进制；
-- LDAP / 数据库 / Redis / 飞书 Webhook 等真实密钥；
-- SSH 私钥、证书、token。
-
-相关规则已写入 `.gitignore`。
-
-## 当前版本状态
-
-当前版本定位为测试服务器已验证的功能版本，适合继续做：
-
-1. 生产切换评审；
-2. 安装部署文档完善；
-3. 前端工程化改造；
-4. API 文档与 OpenAPI 补充；
-5. Slurm 多集群适配；
-6. 更完整的自动化测试和 CI。
-
-## License
-
-本项目采用 Apache License 2.0，详见 [LICENSE](LICENSE)。

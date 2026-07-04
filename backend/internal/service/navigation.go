@@ -37,6 +37,7 @@ func DefaultMenuCatalog() []MenuItem {
 		{Code: "templates", ParentCode: "jobs", Name: "作业模板", Path: "job-templates.html", Permission: "menu.jobs.templates.view", RoutePermission: "route.jobs.templates.view", Resource: "job_templates", Type: "page", SortOrder: 51},
 		{Code: "job_list", ParentCode: "jobs", Name: "作业列表", Path: "job-list.html", Permission: "menu.jobs.list.view", RoutePermission: "route.jobs.list.view", Resource: "jobs", Type: "page", SortOrder: 52},
 		{Code: "vnc", ParentCode: "jobs", Name: "VNC 桌面", Path: "vnc-desktop.html", Permission: "menu.jobs.vnc.view", RoutePermission: "route.jobs.vnc.view", Resource: "vnc_sessions", Type: "page", SortOrder: 53},
+		{Code: "terminal", Name: "终端中心", Path: "terminal.html", Permission: "menu.terminal.view", RoutePermission: "route.terminal.view", Resource: "terminal", Type: "page", SortOrder: 55},
 		{Code: "operations", Name: "运维管理", Type: "group", SortOrder: 60},
 		{Code: "monitoring", ParentCode: "operations", Name: "监控告警", Path: "monitoring.html", Permission: "menu.operations.monitoring.view", RoutePermission: "route.operations.monitoring.view", Resource: "monitoring", Type: "page", SortOrder: 61},
 		{Code: "inspection", ParentCode: "operations", Name: "巡检报告", Path: "inspection.html", Permission: "menu.operations.inspection.view", RoutePermission: "route.operations.inspection.view", Resource: "inspection_reports", Type: "page", SortOrder: 62},

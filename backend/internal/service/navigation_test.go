@@ -10,10 +10,11 @@ func TestBuildNavigationFlattensLDAPUserMenus(t *testing.T) {
 		"menu.jobs.templates.view": {},
 		"menu.jobs.list.view":      {},
 		"menu.jobs.vnc.view":       {},
+		"menu.terminal.view":       {},
 	}
 	items := BuildNavigation("ldap", permissions, DefaultMenuCatalog())
-	if len(items) != 6 {
-		t.Fatalf("flat menu count = %d, want 6: %#v", len(items), items)
+	if len(items) != 7 {
+		t.Fatalf("flat menu count = %d, want 7: %#v", len(items), items)
 	}
 	for _, item := range items {
 		if item.Type == "group" || len(item.Children) > 0 {
@@ -28,7 +29,7 @@ func TestBuildNavigationKeepsAdminTree(t *testing.T) {
 	hasGroup := false
 	hasLogGroup := false
 	hasSystemGroup := false
-	wantNames := []string{"仪表盘", "账户管理", "资源管理", "数据管理", "作业管理", "运维管理", "日志管理", "系统配置"}
+	wantNames := []string{"仪表盘", "账户管理", "资源管理", "数据管理", "作业管理", "终端中心", "运维管理", "日志管理", "系统配置"}
 	if len(items) != len(wantNames) {
 		t.Fatalf("admin top-level menu count = %d, want %d: %#v", len(items), len(wantNames), items)
 	}

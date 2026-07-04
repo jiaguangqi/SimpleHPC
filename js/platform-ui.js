@@ -26,6 +26,9 @@
     const loginPage=document.querySelector('.login-page');
     if(loginPage&&config.loginImage){
       loginPage.style.setProperty('--login-server-image','url("'+String(config.loginImage).replace(/"/g,'%22')+'")');
+      document.querySelectorAll('.server-visual').forEach(image=>{
+        image.src=config.loginImage;
+      });
     }
     window.PlatformUI.config=config;
     document.dispatchEvent(new CustomEvent('platform-config-applied',{detail:config}));

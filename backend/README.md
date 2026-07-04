@@ -2,6 +2,17 @@
 
 Go backend for the SimpleHPC prototype. The first implementation targets the test server services documented in `../docs/BACKEND_SERVICES_DEPLOYMENT.md`.
 
+## Data Authenticity Regression
+
+Run the frontend static-data audit from the project root:
+
+```bash
+node --test tests/static-data-audit.test.js
+```
+
+The audit rejects known simulated cluster records so they cannot silently return
+to production pages.
+
 ## Run Locally
 
 ```bash

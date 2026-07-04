@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" href="data:,"><title>simpleHPC — 用户管理</title><link rel="stylesheet" href="css/theme.css?v=20260703profile"></head>
+<link rel="icon" href="data:,"><title>simpleHPC — 用户管理</title><link rel="stylesheet" href="css/theme.css?v=20260705navdrop2"></head>
 <body><div class="layout">
   <aside class="sidebar">
     <div class="brand"><div class="brand-icon">S</div><span class="brand-name">simpleHPC</span></div>
@@ -73,4 +73,4 @@
 function toggleUserRows(input,checked){document.querySelectorAll('.user-table-row').forEach(function(box){box.checked=checked});syncUserTableMaster();}
 function syncUserTableMaster(){var master=document.querySelector('.user-table-master');var rows=Array.from(document.querySelectorAll('.user-table-row'));var checked=rows.filter(function(box){return box.checked}).length;if(!master)return;master.checked=rows.length>0&&checked===rows.length;master.indeterminate=checked>0&&checked<rows.length;}
 </script>
-<script src="js/app.js?v=20260703profile"></script><script src="js/account-pages.js?v=20260626g"></script></body></html>
+<script src="js/app.js?v=20260704favnav"></script><script src="js/account-pages.js?v=20260626g"></script></body></html>

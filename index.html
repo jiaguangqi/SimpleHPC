@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:,">
 <title>simpleHPC — 仪表盘</title>
-<link rel="stylesheet" href="css/theme.css?v=20260703flicker">
+<link rel="stylesheet" href="css/theme.css?v=20260705navdrop2">
 <link rel="stylesheet" href="css/effects.css?v=20260702sample">
 </head>
 <body class="shpc-sample-page shpc-dashboard-page">
@@ -64,7 +64,10 @@
       <button class="btn-icon" aria-label="刷新" onclick="window.simpleHPCRefreshDashboard ? window.simpleHPCRefreshDashboard() : location.reload()">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
       </button>
-      <button class="btn btn-primary" id="dashboardEditBtn" onclick="toggleDashboardEdit()">编辑仪表盘</button>
+      <button class="btn-icon dashboard-edit-btn" id="dashboardEditBtn" onclick="toggleDashboardEdit()" title="编辑仪表盘" aria-label="编辑仪表盘" data-edit-label="编辑仪表盘">
+        <svg class="dashboard-edit-icon dashboard-edit-icon-edit" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        <svg class="dashboard-edit-icon dashboard-edit-icon-exit" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
       <div class="avatar" style="cursor:pointer;" data-dropdown='{"html":"<a class=\"_shpc-dropdown-item\" href=\"users.html\">个人资料</a><button type=\"button\" class=\"_shpc-dropdown-item\" style=\"width:100%;border:0;background:transparent;text-align:left;font:inherit\" onclick=\"App.openPasswordDrawer()\">修改密码</button><div class=\"_shpc-dropdown-divider\"></div><button type=\"button\" class=\"_shpc-dropdown-item\" style=\"width:100%;border:0;background:transparent;text-align:left;font:inherit;color:var(--danger)\" onclick=\"App.logout()\">退出登录</button>","width":"160px","placement":"bottom-end"}'>管</div>
     </div>
   </header>
@@ -222,7 +225,14 @@ function prepareDashboardWidgets(){getDashboardWidgets().forEach(makeDashboardCo
 function toggleDashboardEdit(){
   dashboardEditMode=!dashboardEditMode;
   document.body.classList.toggle('dashboard-editing',dashboardEditMode);
-  document.getElementById('dashboardEditBtn').textContent=dashboardEditMode?'退出编辑':'编辑仪表盘';
+  var editBtn=document.getElementById('dashboardEditBtn');
+  if(editBtn){
+    var nextLabel=dashboardEditMode?'退出编辑':'编辑仪表盘';
+    editBtn.title=nextLabel;
+    editBtn.setAttribute('aria-label',nextLabel);
+    editBtn.dataset.editLabel=nextLabel;
+    editBtn.classList.toggle('is-editing',dashboardEditMode);
+  }
   prepareDashboardWidgets();
   getDashboardWidgets().forEach(function(widget){widget.draggable=dashboardEditMode});
   if(dashboardEditMode) wireDashboardGridDrop();
@@ -546,7 +556,7 @@ document.addEventListener('DOMContentLoaded',function(){
   prepareDashboardWidgets();
 });
 </script>
-<script src="js/app.js?v=20260703flicker"></script>
+<script src="js/app.js?v=20260704favnav"></script>
 <script src="js/live.js?v=20260626b"></script>
 <script src="js/dashboard-trend-axis.js?v=20260627a"></script>
 <script src="js/dashboard.js?v=20260703flicker"></script>

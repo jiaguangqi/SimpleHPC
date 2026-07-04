@@ -60,6 +60,40 @@ func apiAction(method, path string) string {
 	if strings.HasSuffix(path, "/test") {
 		return "test"
 	}
+	if strings.HasPrefix(strings.TrimPrefix(path, "/api/v1/"), "terminal/") {
+		return "connect"
+	}
+	if strings.HasPrefix(strings.TrimPrefix(path, "/api/v1/"), "webssh/") {
+		trimmed := strings.TrimPrefix(path, "/api/v1/")
+		switch {
+		case strings.HasPrefix(trimmed, "webssh/nodes"):
+			return "list"
+		case strings.HasPrefix(trimmed, "webssh/files/tree"):
+			return "tree"
+		case strings.HasPrefix(trimmed, "webssh/files/list"):
+			return "list"
+		case strings.HasPrefix(trimmed, "webssh/files/upload"):
+			return "upload"
+		case strings.HasPrefix(trimmed, "webssh/files/download"):
+			return "download"
+		case strings.HasPrefix(trimmed, "webssh/files/mkdir"):
+			return "mkdir"
+		case strings.HasPrefix(trimmed, "webssh/files/rename"):
+			return "rename"
+		case strings.HasPrefix(trimmed, "webssh/files/copy"):
+			return "copy"
+		case strings.HasPrefix(trimmed, "webssh/files/move"):
+			return "move"
+		case strings.HasPrefix(trimmed, "webssh/files/archive"):
+			return "archive"
+		case strings.HasPrefix(trimmed, "webssh/sessions") && strings.HasSuffix(trimmed, "/resize"):
+			return "resize"
+		case strings.HasPrefix(trimmed, "webssh/sessions") && strings.HasSuffix(trimmed, "/reconnect"):
+			return "reconnect"
+		case strings.HasPrefix(trimmed, "webssh/sessions") && strings.HasSuffix(trimmed, "/ws"):
+			return "ws"
+		}
+	}
 	if strings.HasSuffix(path, "/refresh") {
 		return "refresh"
 	}
@@ -130,6 +164,14 @@ func apiResource(path string) string {
 		return "monitoring"
 	case strings.HasPrefix(trimmed, "logs/"), strings.HasPrefix(trimmed, "audit/"):
 		return "logs"
+	case strings.HasPrefix(trimmed, "terminal/"):
+		return "terminal"
+	case strings.HasPrefix(trimmed, "webssh/nodes"):
+		return "webssh.nodes"
+	case trimmed == "webssh/files" || strings.HasPrefix(trimmed, "webssh/files/"):
+		return "webssh.files"
+	case strings.HasPrefix(trimmed, "webssh/sessions"):
+		return "webssh.sessions"
 	case strings.HasPrefix(trimmed, "config/"):
 		return "config." + strings.ReplaceAll(strings.TrimPrefix(trimmed, "config/"), "/", ".")
 	default:

@@ -27,6 +27,15 @@ func TestEveryAPIRouteHasPermissionOrIsPublic(t *testing.T) {
 		{http.MethodPut, "/api/v1/config/slurm"},
 		{http.MethodGet, "/api/v1/inspection/runs"},
 		{http.MethodGet, "/api/v1/rbac/roles"},
+		{http.MethodGet, "/api/v1/terminal/session"},
+		{http.MethodGet, "/api/v1/config/terminal"},
+		{http.MethodPut, "/api/v1/config/terminal"},
+		{http.MethodGet, "/api/v1/webssh/nodes"},
+		{http.MethodGet, "/api/v1/webssh/files/list"},
+		{http.MethodPost, "/api/v1/webssh/files/upload"},
+		{http.MethodDelete, "/api/v1/webssh/files"},
+		{http.MethodPost, "/api/v1/webssh/sessions"},
+		{http.MethodGet, "/api/v1/webssh/sessions/:id/ws"},
 	}
 	for _, route := range routes {
 		key, public := routePermission(route.method, route.path)
@@ -58,7 +67,9 @@ func TestRegisteredRouterHasNoUnmappedAPI(t *testing.T) {
 	// checked by the static registry test below and by the catalog report test.
 	for _, path := range []string{
 		"/api/v1/overview", "/api/v1/logs/system", "/api/v1/config/platform",
-		"/api/v1/dashboard/queue-job-trends",
+		"/api/v1/config/terminal",
+		"/api/v1/dashboard/queue-job-trends", "/api/v1/terminal/session",
+		"/api/v1/webssh/nodes", "/api/v1/webssh/files/list", "/api/v1/webssh/sessions",
 		"/api/v1/monitoring/alerts", "/api/v1/ldap/users", "/api/v1/account/admins",
 		"/api/v1/slurm/qos", "/api/v1/inspection/runs", "/api/v1/storage/acls",
 		"/api/v1/job-template-runs",
@@ -81,6 +92,56 @@ func TestRenameRouteUsesStorageUpdatePermission(t *testing.T) {
 	key, public := routePermission(http.MethodPost, "/api/v1/storage/rename")
 	if public || key != "api.storage.files.update" {
 		t.Fatalf("rename permission = %q public=%v", key, public)
+	}
+}
+
+func TestTerminalRouteUsesConnectPermission(t *testing.T) {
+	key, public := routePermission(http.MethodGet, "/api/v1/terminal/session")
+	if public || key != "api.terminal.connect" {
+		t.Fatalf("terminal permission = %q public=%v", key, public)
+	}
+}
+
+func TestTerminalConfigRoutesUseConfigPermissions(t *testing.T) {
+	read, public := routePermission(http.MethodGet, "/api/v1/config/terminal")
+	if public || read != "api.config.terminal.list" {
+		t.Fatalf("terminal config read permission = %q public=%v", read, public)
+	}
+	update, public := routePermission(http.MethodPut, "/api/v1/config/terminal")
+	if public || update != "api.config.terminal.update" {
+		t.Fatalf("terminal config update permission = %q public=%v", update, public)
+	}
+}
+
+func TestWebSSHRoutesUseDedicatedPermissions(t *testing.T) {
+	cases := []struct {
+		method string
+		path   string
+		want   string
+	}{
+		{http.MethodGet, "/api/v1/webssh/nodes", "api.webssh.nodes.list"},
+		{http.MethodGet, "/api/v1/webssh/files/tree", "api.webssh.files.tree"},
+		{http.MethodGet, "/api/v1/webssh/files/list", "api.webssh.files.list"},
+		{http.MethodPost, "/api/v1/webssh/files/upload", "api.webssh.files.upload"},
+		{http.MethodGet, "/api/v1/webssh/files/download", "api.webssh.files.download"},
+		{http.MethodPost, "/api/v1/webssh/files/mkdir", "api.webssh.files.mkdir"},
+		{http.MethodDelete, "/api/v1/webssh/files", "api.webssh.files.delete"},
+		{http.MethodPost, "/api/v1/webssh/files/rename", "api.webssh.files.rename"},
+		{http.MethodPost, "/api/v1/webssh/files/copy", "api.webssh.files.copy"},
+		{http.MethodPost, "/api/v1/webssh/files/move", "api.webssh.files.move"},
+		{http.MethodPost, "/api/v1/webssh/files/archive", "api.webssh.files.archive"},
+		{http.MethodPost, "/api/v1/webssh/sessions", "api.webssh.sessions.create"},
+		{http.MethodGet, "/api/v1/webssh/sessions", "api.webssh.sessions.list"},
+		{http.MethodPost, "/api/v1/webssh/sessions/:id/resize", "api.webssh.sessions.resize"},
+		{http.MethodPost, "/api/v1/webssh/sessions/:id/reconnect", "api.webssh.sessions.reconnect"},
+		{http.MethodDelete, "/api/v1/webssh/sessions/:id", "api.webssh.sessions.delete"},
+		{http.MethodGet, "/api/v1/webssh/sessions/:id/ws", "api.webssh.sessions.ws"},
+	}
+	for _, tc := range cases {
+		got, public := routePermission(tc.method, tc.path)
+		if public || got != tc.want {
+			t.Fatalf("%s %s permission = %q public=%v, want %q", tc.method, tc.path, got, public, tc.want)
+		}
 	}
 }
 
