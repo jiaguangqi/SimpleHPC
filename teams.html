@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" href="data:,"><title>simpleHPC — 团队管理</title><link rel="stylesheet" href="css/theme.css?v=20260705navdrop2"></head>
+<link rel="icon" type="image/png" href="assets/logos/simplehpc-favicon.png"><title>simpleHPC — 团队管理</title><link rel="stylesheet" href="css/theme.css?v=20260705brandnav1"></head>
 <body><div class="layout">
   <aside class="sidebar">
     <div class="brand"><div class="brand-icon">S</div><span class="brand-name">simpleHPC</span></div>
@@ -60,7 +60,7 @@
     <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:28px;">正在获取后端团队数据...</td></tr>
   </tbody></table></div></div>
 <div class="card"><div class="card-title">账号操作规则</div><div class="ops-rule-grid"><div><strong>冻结账号</strong><span>清理登录节点中该用户正在运行的进程并禁止登录；普通用户提示联系组长或组长助理，组长账号提示联系集群管理员。</span></div><div><strong>重置密码</strong><span>生成 18 位随机数字和大小写字母组合，邮件发送给用户邮箱；页面只显示一次新密码，不写入系统日志。</span></div><div><strong>删除账号</strong><span>清理 LDAP 信息并删除用户家目录；项目数据库保留账号记录，状态标记为账号已注销，用于作业历史和机时对账。</span></div></div></div>
-<template id="tplTeamForm"><div class="_shpc-form-grid team-form"><div class="_shpc-field"><label>团队名称</label><input id="teamNameInput" placeholder="请输入团队名称"></div><div class="_shpc-field"><label>组名称</label><input id="teamGroupInput" placeholder="默认与团队名称一致"></div><div class="_shpc-field"><label>单位编码或名称</label><input id="teamUnitInput"></div><div class="_shpc-field"><label>组长账号</label><input id="leaderAccountInput"></div><div class="_shpc-field"><label>资源策略</label><input id="teamPolicyInput"></div></div></template>
+<template id="tplTeamForm"><div class="_shpc-form-grid team-form"><div class="_shpc-field"><label>团队名称</label><input id="teamNameInput" placeholder="请输入团队名称"></div><div class="_shpc-field"><label>组名称</label><input id="teamGroupInput" pattern="[a-z_][a-z0-9_-]{0,31}" maxlength="32" placeholder="例如 gaohongxiang_team" title="LDAP/Linux 组名只能使用小写字母、数字、下划线和中划线，必须以小写字母或下划线开头"></div><div class="_shpc-field"><label>单位编码或名称</label><input id="teamUnitInput"></div><div class="_shpc-field"><label>组长账号</label><input id="leaderAccountInput" pattern="[a-z_][a-z0-9_-]{0,31}" maxlength="32" placeholder="选填，例如 user001" title="组长账号需符合 Linux/LDAP 账号规则"></div><div class="_shpc-field"><label>资源策略</label><input id="teamPolicyInput"></div></div></template>
 <template id="tplTeamCreateWizard">
   <div class="team-create-wizard">
     <div style="display:flex;gap:12px;margin-bottom:18px;">
@@ -71,7 +71,7 @@
       <div class="notice-box" style="margin-bottom:16px;"><strong>创建规则</strong><span>新建用户组必须同时创建组长账号；组长会作为该用户组的第一个用户写入 LDAP 和项目库。</span></div>
       <div class="_shpc-form-grid team-form">
         <div class="_shpc-field"><label>团队名称</label><input id="wizardTeamName" placeholder="例如：高鸿祥组"></div>
-        <div class="_shpc-field"><label>LDAP 组名称</label><input id="wizardGroupName" placeholder="默认与团队名称一致"></div>
+        <div class="_shpc-field"><label>LDAP 组名称</label><input id="wizardGroupName" pattern="[a-z_][a-z0-9_-]{0,31}" maxlength="32" placeholder="例如 gaohongxiang_team" title="LDAP/Linux 组名只能使用小写字母、数字、下划线和中划线，必须以小写字母或下划线开头"></div>
         <div class="_shpc-field"><label>单位</label><select id="wizardUnit"><option value="">正在读取已创建单位...</option></select></div>
         <div class="_shpc-field"><label>资源策略</label><select id="wizardPolicy"><option value="">正在读取 QOS 策略...</option></select></div>
       </div>
@@ -87,7 +87,7 @@
         <div class="_shpc-field"><label>用户组</label><input id="wizardLeaderTeamLocked" disabled value="待选择"></div>
         <div class="_shpc-field"><label>角色</label><input id="wizardLeaderRoleLocked" disabled value="组长 / team_admin"></div>
         <div class="_shpc-field"><label>组长姓名</label><input id="wizardLeaderName" placeholder="请输入姓名"></div>
-        <div class="_shpc-field"><label>组长账号</label><input id="wizardLeaderUsername" placeholder="请输入账号"></div>
+        <div class="_shpc-field"><label>组长账号</label><input id="wizardLeaderUsername" pattern="[a-z_][a-z0-9_-]{0,31}" maxlength="32" placeholder="例如 user001" title="组长账号需符合 Linux/LDAP 账号规则"></div>
         <div class="_shpc-field"><label>邮箱</label><input id="wizardLeaderEmail" placeholder="name@example.edu.cn"></div>
         <div class="_shpc-field"><label>用户主目录</label><input id="wizardLeaderHome" placeholder="默认 /data/home/账号"></div>
       </div>
@@ -118,14 +118,27 @@ function memberStatusPill(status){
 function toggleTeamRows(checked){
   document.querySelectorAll('.team-table .batch-row').forEach(function(input){ input.checked=checked; });
 }
+var linuxNamePattern=/^[a-z_][a-z0-9_-]{0,31}$/;
+function validateLinuxName(name,label){
+  var raw=String(name||'');
+  var normalized=raw.trim();
+  if(!normalized) throw new Error(label+'不能为空');
+  if(raw!==normalized) throw new Error(label+'不能包含首尾空格');
+  if(!linuxNamePattern.test(normalized)) throw new Error(label+'只能使用小写字母、数字、下划线和中划线，必须以小写字母或下划线开头，长度 1-32 位');
+  return normalized;
+}
 async function openTeamDrawer(teamName){
   if(!teamName) return openTeamCreateWizard();
   var existing=null;
   if(teamName){try{var list=await fetch('/api/v1/account/teams').then(function(r){return r.json()});existing=(list.items||[]).find(function(item){return item.name===teamName||item.groupName===teamName})||null;}catch(error){return App.toast(error.message,'danger');}}
   App.drawer({title:teamName?'编辑团队':'新建团队',width:'760px',content:document.getElementById('tplTeamForm').innerHTML,onSubmit:async function(){
     try{
+      var groupName=document.getElementById('teamGroupInput').value.trim();
+      var leaderUsername=document.getElementById('leaderAccountInput').value.trim();
+      if(groupName) groupName=validateLinuxName(groupName,'LDAP 组名称');
+      if(leaderUsername) leaderUsername=validateLinuxName(leaderUsername,'组长账号');
       var url=teamName?'/api/v1/account/teams/'+encodeURIComponent(teamName):'/api/v1/account/teams';var method=teamName?'PUT':'POST';
-      var res=await fetch(url,{method:method,headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('teamNameInput').value,groupName:document.getElementById('teamGroupInput').value,unit:document.getElementById('teamUnitInput').value,leaderUsername:document.getElementById('leaderAccountInput').value,resourcePolicy:document.getElementById('teamPolicyInput').value})});
+      var res=await fetch(url,{method:method,headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('teamNameInput').value,groupName:groupName,unit:document.getElementById('teamUnitInput').value,leaderUsername:leaderUsername,resourcePolicy:document.getElementById('teamPolicyInput').value})});
       var data=await res.json().catch(function(){return {}});if(!res.ok)throw new Error(data.error||(teamName?'更新失败':'创建失败'));App.toast(teamName?'团队信息已更新':'团队已创建并同步 LDAP','success');location.reload();
     }catch(error){App.toast(error.message,'danger');}
   }});
@@ -166,14 +179,15 @@ function openTeamCreateWizard(){
   }
   function validateStep1(){
     if(!value('wizardTeamName')) throw new Error('团队名称不能为空');
+    validateLinuxName(value('wizardGroupName'),'LDAP 组名称');
     if(!value('wizardUnit')) throw new Error('请选择已创建的用户单位');
   }
   function validateStep2(){
     if(!value('wizardLeaderName')) throw new Error('组长姓名不能为空');
-    if(!value('wizardLeaderUsername')) throw new Error('组长账号不能为空');
+    validateLinuxName(value('wizardLeaderUsername'),'组长账号');
     if(!value('wizardLeaderEmail')||value('wizardLeaderEmail').indexOf('@')<0) throw new Error('组长邮箱格式不正确');
   }
-  root.querySelector('#wizardTeamName').addEventListener('input',function(){var group=root.querySelector('#wizardGroupName');if(!group.dataset.touched) group.value=this.value.trim();});
+  root.querySelector('#wizardTeamName').addEventListener('input',function(){var group=root.querySelector('#wizardGroupName');var normalized=this.value.trim();if(!group.dataset.touched) group.value=linuxNamePattern.test(normalized)?normalized:'';});
   root.querySelector('#wizardGroupName').addEventListener('input',function(){this.dataset.touched='true';});
   root.querySelector('#wizardLeaderUsername').addEventListener('input',function(){var home=root.querySelector('#wizardLeaderHome');if(!home.dataset.touched) home.value=this.value.trim()?'/data/home/'+this.value.trim():'';});
   root.querySelector('#wizardLeaderHome').addEventListener('input',function(){this.dataset.touched='true';});
@@ -222,7 +236,7 @@ function openTeamCreateWizard(){
     try{
       validateStep1();validateStep2();
       this.disabled=true;
-      var groupName=value('wizardGroupName')||value('wizardTeamName');
+      var groupName=validateLinuxName(value('wizardGroupName'),'LDAP 组名称');
       var payload={team:{name:value('wizardTeamName'),groupName:groupName,unit:value('wizardUnit'),leaderUsername:value('wizardLeaderUsername'),resourcePolicy:value('wizardPolicy')},leader:{username:value('wizardLeaderUsername'),displayName:value('wizardLeaderName'),email:value('wizardLeaderEmail'),unit:value('wizardUnit'),team:groupName,homeDirectory:value('wizardLeaderHome')},storageGrants:storageGrants()};
       var res=await fetch('/api/v1/account/teams/create-with-leader',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       var data=await res.json().catch(function(){return {};});
@@ -245,13 +259,13 @@ function initTeamForm(teamName){
     teamInput.value=teamName;
     groupInput.value=teamName;
   }
-  teamInput?.addEventListener('input',function(){ if(!groupInput.dataset.touched) groupInput.value=this.value.trim(); });
+  teamInput?.addEventListener('input',function(){ var normalized=this.value.trim(); if(!groupInput.dataset.touched) groupInput.value=linuxNamePattern.test(normalized)?normalized:''; });
   groupInput?.addEventListener('input',function(){ this.dataset.touched='true'; });
   noInput?.addEventListener('input',function(){ accountInput.value=this.value.trim(); homeInput.value=this.value.trim()?'/data/home/'+this.value.trim():''; if(!emailInput.value && this.value.trim()) emailInput.placeholder=this.value.trim()+'@example.edu.cn'; });
   accountInput?.addEventListener('input',function(){ homeInput.value=this.value.trim()?'/data/home/'+this.value.trim():''; });
 }
 function openAddMemberDrawer(teamName){
-  App.drawer({title:'新增成员 - '+teamName,width:'760px',content:'<div class="_shpc-form-grid"><div class="_shpc-field"><label>账号</label><input id="memberAccount"></div><div class="_shpc-field"><label>姓名</label><input id="memberName"></div><div class="_shpc-field"><label>邮箱</label><input id="memberEmail"></div><div class="_shpc-field"><label>单位</label><input id="memberUnit"></div><div class="_shpc-field"><label>用户主目录</label><input id="memberHome"></div></div>',onSubmit:async function(){try{var res=await fetch('/api/v1/account/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('memberAccount').value,displayName:document.getElementById('memberName').value,email:document.getElementById('memberEmail').value,unit:document.getElementById('memberUnit').value,team:teamName,homeDirectory:document.getElementById('memberHome').value})});var data=await res.json().catch(function(){return {}});if(!res.ok)throw new Error(data.error||'创建失败');App.modal({title:'成员创建成功',content:'<div class="one-time-password"><span>初始密码仅显示一次</span><code>'+teamEscapeHTML(data.password||'数据未获取')+'</code></div>',showFooter:false});}catch(error){App.toast(error.message,'danger');}}})
+  App.drawer({title:'新增成员 - '+teamName,width:'760px',content:'<div class="_shpc-form-grid"><div class="_shpc-field"><label>账号</label><input id="memberAccount" pattern="[a-z_][a-z0-9_-]{0,31}" maxlength="32" placeholder="例如 user001" title="账号需符合 Linux/LDAP 账号规则"></div><div class="_shpc-field"><label>姓名</label><input id="memberName"></div><div class="_shpc-field"><label>邮箱</label><input id="memberEmail" type="email"></div><div class="_shpc-field"><label>单位</label><input id="memberUnit"></div><div class="_shpc-field"><label>用户主目录</label><input id="memberHome"></div></div>',onSubmit:async function(){try{var username=validateLinuxName(document.getElementById('memberAccount').value,'成员账号');var res=await fetch('/api/v1/account/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:username,displayName:document.getElementById('memberName').value,email:document.getElementById('memberEmail').value,unit:document.getElementById('memberUnit').value,team:teamName,homeDirectory:document.getElementById('memberHome').value})});var data=await res.json().catch(function(){return {}});if(!res.ok)throw new Error(data.error||'创建失败');App.modal({title:'成员创建成功',content:'<div class="one-time-password"><span>初始密码仅显示一次</span><code>'+teamEscapeHTML(data.password||'数据未获取')+'</code></div>',showFooter:false});}catch(error){App.toast(error.message,'danger');}}})
 }
 async function openTeamMembers(teamName){
   App.toast('正在获取团队成员数据...','info');
@@ -330,4 +344,4 @@ window.confirmUnfreezeMember=confirmUnfreezeMember;
 window.resetMemberPassword=resetMemberPassword;
 window.confirmDeleteMember=confirmDeleteMember;
 </script>
-<script src="js/app.js?v=20260704favnav"></script><script src="js/account-pages.js?v=20260626g"></script></body></html>
+<script src="js/app.js?v=20260707session"></script><script src="js/account-pages.js?v=20260626g"></script></body></html>

@@ -2,6 +2,50 @@
 
 本文档记录 SimpleHPC 的主要版本变更。格式参考 [Keep a Changelog](https://keepachangelog.com/)，版本号采用 `MAJOR.MINOR.PATCH` 语义化版本。
 
+## [0.3.0] - 2026-07-08
+
+### Added
+
+- 新增应用软件 License 监控管理：
+  - 支持商业软件应用目录管理，内置 ANSYS、Abaqus、COMSOL、MATLAB、Fluent、STAR-CCM+、Gaussian、Materials Studio 等常见软件。
+  - 支持应用 Logo 上传，兼容 PNG、SVG、JPG、JPEG、WebP、GIF，License 配置页、监控页、采集日志和详情弹窗统一读取应用图标。
+  - 支持 License 管理器目录管理，内置 FlexNet `lmstat`、`lmutil lmstat` 和 RLM `rlmutil` 模板。
+  - 支持 License Server 配置、测试连接、立即采集、Feature 解析、原始输出展示、采集日志和错误提示。
+  - 新增 License 监控页，展示已接入软件、License 总点数、当前使用中、使用率、高负载软件、异常服务、趋势图、Feature 使用统计、告警摘要和详情弹窗。
+  - 新增 License 监控数据库迁移 `014_license_monitoring`，包括许可证配置、Feature、使用会话和趋势采样表。
+
+### Changed
+
+- 优化顶部导航时代的页面布局规范，License 配置和监控页面改为更紧凑、可扫描的工作台式布局。
+- 优化 License 配置页的管理应用、License 管理器、许可证管理和采集日志四个子页面。
+- 优化 License 监控图表：无采样记录时显示 0 值基线，不再生成模拟数据。
+- 优化管理后台图标、卡片、按钮、弹窗和移动端基础适配。
+- 登录页、顶部导航 Logo 和 favicon 更新为 SimpleHPC 统一品牌资产。
+- 后端 systemd 状态识别优先读取 `systemctl show ActiveState`，降低旧版 systemd 对 forking 服务返回 `unknown` 的误判。
+
+### Fixed
+
+- 修复许可证管理页重复出现“新增许可证”按钮的问题。
+- 修复新增许可证后左侧许可证列表退化为纯文本布局的问题。
+- 修复应用 Logo 只在应用管理页生效、其他 License 页面不自动加载的问题。
+- 修复 License 服务未填写 systemd 服务名时状态显示为 `unmanaged` 但缺少可解释行为的问题。
+- 修复团队创建、账号映射、权限矩阵和导航权限的若干边界问题，保持顶部导航与 RBAC 数据一致。
+
+### Deployment
+
+- 测试服务器已完成 ANSYS License 服务托管验证：
+  - 新增 `ansys-license.service`，封装 ANSYS 自带 `start_ansyslmd` / `stop_ansyslmd` 脚本。
+  - 已验证 `systemctl stop/start/restart ansys-license.service` 可实际停止、启动和重启 ANSYS FlexNet 服务。
+  - 已将 ANSYS License 配置的 `service_name` 更新为 `ansys-license.service`。
+  - 已验证 `lmstat` 返回 `license server UP` 与 `ansyslmd: UP`。
+- 测试服务器已完成 simpleHPC 后端二进制替换和健康接口 smoke test。
+
+### Security
+
+- License 采集命令限制为受控 License 管理器命令，不执行任意 shell。
+- License 服务控制仅通过已配置的 systemd 服务名执行，不在前端暴露服务器命令或敏感路径。
+- 本版本不包含真实 `.env`、密钥、数据库 dump、运行日志、License 文件和后端构建二进制。
+
 ## [0.2.1] - 2026-07-05
 
 ### Changed

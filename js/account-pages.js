@@ -19,6 +19,31 @@
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
+  const linuxNamePattern = /^[a-z_][a-z0-9_-]{0,31}$/;
+  const unitCodePattern = /^[a-z][a-z0-9_-]{1,31}$/;
+
+  function validateLinuxName(value, label) {
+    const raw = String(value || '');
+    const normalized = raw.trim();
+    if (!normalized) throw new Error(label + '不能为空');
+    if (raw !== normalized) throw new Error(label + '不能包含首尾空格');
+    if (!linuxNamePattern.test(normalized)) {
+      throw new Error(label + '只能使用小写字母、数字、下划线和中划线，必须以小写字母或下划线开头，长度 1-32 位');
+    }
+    return normalized;
+  }
+
+  function validateUnitCode(value) {
+    const raw = String(value || '');
+    const normalized = raw.trim();
+    if (!normalized) throw new Error('单位编码不能为空');
+    if (raw !== normalized) throw new Error('单位编码不能包含首尾空格');
+    if (!unitCodePattern.test(normalized)) {
+      throw new Error('单位编码只能使用小写字母、数字、下划线和中划线，必须以小写字母开头，长度 2-32 位');
+    }
+    return normalized;
+  }
+
   const statusPill = (status) => {
     const normalized = String(status || 'active').toLowerCase();
     if (normalized === 'active' || normalized === 'normal' || normalized === 'enabled') {
@@ -328,7 +353,7 @@
         if (unit.dataset.unitAction === 'delete') {
           return window.App.confirm('确认删除单位 '+code+'？仅无团队和用户引用时允许删除。',{danger:true,onConfirm:async()=>{await fetchJSON('/api/v1/account/units/'+encodeURIComponent(code),{method:'DELETE'});renderUnits(await fetchJSON('/api/v1/account/units'));window.App.toast('单位已删除','success');}});
         }
-        return window.App.modal({title:'编辑单位：'+code,content:'<div class="_shpc-form-grid"><div class="_shpc-field"><label>名称</label><input id="editUnitName" value="'+esc(unit.dataset.name)+'"></div><div class="_shpc-field"><label>编码</label><input id="editUnitCode" value="'+esc(code)+'"></div><div class="_shpc-field"><label>管理员</label><input id="editUnitAdmin" value="'+esc(unit.dataset.admin)+'"></div></div>',onSubmit:async()=>{await fetchJSON('/api/v1/account/units/'+encodeURIComponent(code),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('editUnitName').value,code:document.getElementById('editUnitCode').value,admin:document.getElementById('editUnitAdmin').value,status:unit.dataset.status||'active'})});renderUnits(await fetchJSON('/api/v1/account/units'));window.App.toast('单位信息已保存','success');}});
+        return window.App.modal({title:'编辑单位：'+code,content:'<div class="_shpc-form-grid"><div class="_shpc-field"><label>名称</label><input id="editUnitName" value="'+esc(unit.dataset.name)+'"></div><div class="_shpc-field"><label>编码</label><input id="editUnitCode" value="'+esc(code)+'" pattern="[a-z][a-z0-9_-]{1,31}" maxlength="32" title="单位编码只能使用小写字母、数字、下划线和中划线，必须以小写字母开头"></div><div class="_shpc-field"><label>管理员</label><input id="editUnitAdmin" value="'+esc(unit.dataset.admin)+'" pattern="[a-z_][a-z0-9_-]{0,31}" maxlength="32" title="管理员账号需符合 Linux/LDAP 账号规则"></div></div>',onSubmit:async()=>{const nextCode=validateUnitCode(document.getElementById('editUnitCode').value);const nextAdmin=String(document.getElementById('editUnitAdmin').value||'').trim();if(nextAdmin) validateLinuxName(nextAdmin,'管理员账号');await fetchJSON('/api/v1/account/units/'+encodeURIComponent(code),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('editUnitName').value,code:nextCode,admin:nextAdmin,status:unit.dataset.status||'active'})});renderUnits(await fetchJSON('/api/v1/account/units'));window.App.toast('单位信息已保存','success');}});
       }
       const role = event.target.closest('[data-role-action]');
       if (role) {
@@ -362,16 +387,16 @@
     Promise.all([fetchJSON('/api/v1/account/teams'),fetchJSON('/api/v1/account/units')]).then(([teams,units])=>{
       const teamOptions=(teams.items||[]).map(item=>'<option value="'+esc(item.groupName||item.name)+'">'+esc(item.name)+'</option>').join('');
       const unitOptions=(units.items||[]).map(item=>'<option value="'+esc(item.code||item.name)+'">'+esc(item.name)+'</option>').join('');
-      window.App.modal({title:'新建 LDAP 用户',content:'<div class="_shpc-form-grid"><div class="_shpc-field"><label>账号</label><input id="createUserName"></div><div class="_shpc-field"><label>姓名</label><input id="createDisplayName"></div><div class="_shpc-field"><label>邮箱</label><input id="createUserEmail"></div><div class="_shpc-field"><label>单位</label><select id="createUserUnit">'+unitOptions+'</select></div><div class="_shpc-field"><label>团队</label><select id="createUserTeam">'+teamOptions+'</select></div><div class="_shpc-field"><label>主目录</label><input id="createUserHome" placeholder="留空使用 /data/home/账号"></div></div>',onSubmit:async()=>{const result=await fetchJSON('/api/v1/account/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('createUserName').value,displayName:document.getElementById('createDisplayName').value,email:document.getElementById('createUserEmail').value,unit:document.getElementById('createUserUnit').value,team:document.getElementById('createUserTeam').value,homeDirectory:document.getElementById('createUserHome').value})});renderUsers(await fetchJSON(apiByPage[page]));window.App.modal({title:'用户创建成功',content:'<div class="one-time-password"><span>初始密码仅显示一次</span><code>'+esc(result.password||'数据未获取')+'</code></div>',showFooter:false});}});
+      window.App.modal({title:'新建 LDAP 用户',content:'<div class="_shpc-form-grid"><div class="_shpc-field"><label>账号</label><input id="createUserName" pattern="[a-z_][a-z0-9_-]{0,31}" maxlength="32" placeholder="例如 user001" title="账号需符合 Linux/LDAP：小写字母、数字、下划线、中划线，首字符为小写字母或下划线"><small class="muted-small">Linux/LDAP 账号：小写字母、数字、下划线、中划线，1-32 位。</small></div><div class="_shpc-field"><label>姓名</label><input id="createDisplayName"></div><div class="_shpc-field"><label>邮箱</label><input id="createUserEmail" type="email"></div><div class="_shpc-field"><label>单位</label><select id="createUserUnit">'+unitOptions+'</select></div><div class="_shpc-field"><label>团队</label><select id="createUserTeam">'+teamOptions+'</select></div><div class="_shpc-field"><label>主目录</label><input id="createUserHome" placeholder="留空使用 /data/home/账号"></div></div>',onSubmit:async()=>{const username=validateLinuxName(document.getElementById('createUserName').value,'账号');const result=await fetchJSON('/api/v1/account/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,displayName:document.getElementById('createDisplayName').value,email:document.getElementById('createUserEmail').value,unit:document.getElementById('createUserUnit').value,team:document.getElementById('createUserTeam').value,homeDirectory:document.getElementById('createUserHome').value})});renderUsers(await fetchJSON(apiByPage[page]));window.App.modal({title:'用户创建成功',content:'<div class="one-time-password"><span>初始密码仅显示一次</span><code>'+esc(result.password||'数据未获取')+'</code></div>',showFooter:false});}});
     }).catch(error=>window.App.toast(error.message,'danger'));
   };
   window.openUnitEditor = function () {
-    window.App.modal({title:'新建单位',content:'<div class="_shpc-form-grid"><div class="_shpc-field"><label>单位名称</label><input id="newUnitName"></div><div class="_shpc-field"><label>单位编码</label><input id="newUnitCode"></div><div class="_shpc-field"><label>管理员</label><input id="newUnitAdmin"></div></div>',onSubmit:async()=>{await fetchJSON('/api/v1/account/units',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('newUnitName').value,code:document.getElementById('newUnitCode').value,admin:document.getElementById('newUnitAdmin').value,status:'active'})});renderUnits(await fetchJSON(apiByPage[page]));window.App.toast('单位已创建','success');}});
+    window.App.modal({title:'新建单位',content:'<div class="_shpc-form-grid"><div class="_shpc-field"><label>单位名称</label><input id="newUnitName"></div><div class="_shpc-field"><label>单位编码</label><input id="newUnitCode" pattern="[a-z][a-z0-9_-]{1,31}" maxlength="32" placeholder="例如 compute_center" title="单位编码只能使用小写字母、数字、下划线和中划线，必须以小写字母开头"></div><div class="_shpc-field"><label>管理员</label><input id="newUnitAdmin" pattern="[a-z_][a-z0-9_-]{0,31}" maxlength="32" placeholder="选填，例如 user001" title="管理员账号需符合 Linux/LDAP 账号规则"></div></div>',onSubmit:async()=>{const code=validateUnitCode(document.getElementById('newUnitCode').value);const admin=String(document.getElementById('newUnitAdmin').value||'').trim();if(admin) validateLinuxName(admin,'管理员账号');await fetchJSON('/api/v1/account/units',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('newUnitName').value,code,admin,status:'active'})});renderUnits(await fetchJSON(apiByPage[page]));window.App.toast('单位已创建','success');}});
   };
   window.openRoleEditor = function () {
     window.App.modal({title:'新建角色',content:'<div class="_shpc-form-grid"><div class="_shpc-field"><label>角色名称</label><input id="newRoleName"></div><div class="_shpc-field"><label>角色编码</label><input id="newRoleCode"></div><div class="_shpc-field"><label>作用域</label><select id="newRoleScope"><option value="global">全局</option><option value="unit">单位</option><option value="team">团队</option><option value="self">个人</option></select></div><div class="_shpc-field"><label>权限摘要</label><input id="newRoleSummary"></div></div>',onSubmit:async()=>{await fetchJSON('/api/v1/account/roles',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:document.getElementById('newRoleName').value,code:document.getElementById('newRoleCode').value,scopeType:document.getElementById('newRoleScope').value,permissionSummary:document.getElementById('newRoleSummary').value})});renderRoles(await fetchJSON(apiByPage[page]));window.App.toast('角色已创建','success');}});
   };
   window.openAdminCreator = function () {
-    window.App.modal({title:'新建管理员',content:'<div class="_shpc-form-grid"><div class="_shpc-field"><label>账号</label><input id="newAdminName"></div><div class="_shpc-field"><label>邮箱</label><input id="newAdminEmail" type="email"></div><div class="_shpc-field"><label>角色</label><input id="newAdminRole" value="cluster_admin"></div><div class="_shpc-field"><label>初始密码</label><input id="newAdminPassword" type="password"></div></div>',onSubmit:async()=>{await fetchJSON('/api/v1/account/admins',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('newAdminName').value,email:document.getElementById('newAdminEmail').value,roleName:document.getElementById('newAdminRole').value,password:document.getElementById('newAdminPassword').value})});renderAdmins(await fetchJSON(apiByPage[page]));window.App.toast('管理员已创建','success');}});
+    window.App.modal({title:'新建管理员',content:'<div class="_shpc-form-grid"><div class="_shpc-field"><label>账号</label><input id="newAdminName" pattern="[a-z_][a-z0-9_-]{0,31}" maxlength="32" placeholder="例如 admin001" title="管理员账号需符合 Linux/LDAP：小写字母、数字、下划线、中划线，首字符为小写字母或下划线"></div><div class="_shpc-field"><label>邮箱</label><input id="newAdminEmail" type="email"></div><div class="_shpc-field"><label>角色</label><input id="newAdminRole" value="cluster_admin"></div><div class="_shpc-field"><label>初始密码</label><input id="newAdminPassword" type="password"></div></div>',onSubmit:async()=>{const username=validateLinuxName(document.getElementById('newAdminName').value,'管理员账号');await fetchJSON('/api/v1/account/admins',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,email:document.getElementById('newAdminEmail').value,roleName:document.getElementById('newAdminRole').value,password:document.getElementById('newAdminPassword').value})});renderAdmins(await fetchJSON(apiByPage[page]));window.App.toast('管理员已创建','success');}});
   };
 })();

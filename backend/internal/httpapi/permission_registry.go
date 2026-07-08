@@ -60,6 +60,18 @@ func apiAction(method, path string) string {
 	if strings.HasSuffix(path, "/test") {
 		return "test"
 	}
+	if strings.HasSuffix(path, "/collect") {
+		return "collect"
+	}
+	if strings.HasSuffix(path, "/service/start") {
+		return "start"
+	}
+	if strings.HasSuffix(path, "/service/stop") {
+		return "stop"
+	}
+	if strings.HasSuffix(path, "/service/restart") {
+		return "restart"
+	}
 	if strings.HasPrefix(strings.TrimPrefix(path, "/api/v1/"), "terminal/") {
 		return "connect"
 	}
@@ -162,6 +174,10 @@ func apiResource(path string) string {
 		return "inspection"
 	case strings.HasPrefix(trimmed, "monitoring"):
 		return "monitoring"
+	case strings.HasPrefix(trimmed, "license/configs"):
+		return "license.config"
+	case strings.HasPrefix(trimmed, "license/status"):
+		return "license.status"
 	case strings.HasPrefix(trimmed, "logs/"), strings.HasPrefix(trimmed, "audit/"):
 		return "logs"
 	case strings.HasPrefix(trimmed, "terminal/"):

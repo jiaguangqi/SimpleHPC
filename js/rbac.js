@@ -646,10 +646,13 @@
     if (!brand) {
       brand = doc.createElement('div');
       brand.className = 'topbar-brand';
-      brand.innerHTML = '<button class="topbar-brand-logo" type="button" aria-label="打开菜单总览"><span>S</span></button><a class="topbar-brand-name" href="index.html">Simple<span>HPC</span></a>';
       header.insertBefore(brand, header.firstChild);
     }
-    const logoButton = brand.querySelector('.topbar-brand-logo');
+    if (!brand.querySelector('.topbar-brand-menu') || !brand.querySelector('.topbar-brand-home')) {
+      brand.innerHTML = '<button class="topbar-brand-logo topbar-brand-menu" type="button" aria-label="打开菜单总览" title="打开菜单总览"><img src="assets/logos/simplehpc-logo-icon.png" alt="" aria-hidden="true"></button>' +
+        '<a class="topbar-brand-name topbar-brand-home" href="index.html" aria-label="返回仪表盘" title="快速跳转仪表盘">Simple<span>HPC</span></a>';
+    }
+    const logoButton = brand.querySelector('.topbar-brand-menu');
     if (logoButton) logoButton.onclick = event => {
       event.preventDefault();
       openMenuOverview();
@@ -1169,7 +1172,11 @@
       credentials: 'same-origin', cache: 'no-store', headers: tokenHeaders()
     }).then(async response => {
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || '权限上下文获取失败');
+      if (!response.ok) {
+        const error = new Error(data.error || '权限上下文获取失败');
+        error.status = response.status;
+        throw error;
+      }
       context = data;
       renderNavigation();
       guardRoute();
@@ -1187,6 +1194,10 @@
   function init() {
     if (!root.document || ['login.html', 'login'].includes(currentTarget())) return Promise.resolve(null);
     return load(false).catch(error => {
+      if (error && (error.status === 401 || error.status === 419 || /unauthorized|登录已失效/i.test(error.message || ''))) {
+        root.App?.redirectToLogin?.('expired');
+        return null;
+      }
       root.App?.toast?.('权限信息加载失败：' + error.message, 'danger');
       return null;
     });

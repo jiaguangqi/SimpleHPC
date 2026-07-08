@@ -146,6 +146,22 @@ func (s *Services) ExecuteInspection(ctx context.Context, username string) (Insp
 			InspectionCommand{Name: "inode 使用率 " + root, Category: "存储系统", Command: "/usr/bin/df", Args: []string{"-P", "-i", root}},
 		)
 	}
+	if configs, err := s.ListLicenseConfigs(ctx, "", "true"); err == nil {
+		for _, cfg := range configs {
+			serviceName := strings.TrimSpace(cfg.ServiceName)
+			if serviceName == "" {
+				continue
+			}
+			specs = append(specs, InspectionCommand{
+				Name:             "License 服务 " + cfg.AppName,
+				Category:         "License 服务",
+				Command:          "/usr/bin/systemctl",
+				Args:             []string{"is-active", serviceName},
+				SkipWhenMissing:  true,
+				UnavailableLabel: "systemctl 不可用或 License 服务未配置",
+			})
+		}
+	}
 	checks := make([]InspectionCheck, 0, len(specs)+3)
 	for _, spec := range specs {
 		item := runInspectionCommand(ctx, spec)

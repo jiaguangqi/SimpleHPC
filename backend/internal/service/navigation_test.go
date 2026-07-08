@@ -46,7 +46,7 @@ func TestBuildNavigationKeepsAdminTree(t *testing.T) {
 			hasLogGroup = item.Type == "group" && len(item.Children) == 3
 		}
 		if item.Code == "system" {
-			hasSystemGroup = item.Type == "group" && len(item.Children) == 5
+			hasSystemGroup = item.Type == "group" && len(item.Children) == 6
 		}
 	}
 	if !hasGroup {
@@ -56,6 +56,6 @@ func TestBuildNavigationKeepsAdminTree(t *testing.T) {
 		t.Fatalf("日志管理 must be a top-level group with 3 children: %#v", items)
 	}
 	if !hasSystemGroup {
-		t.Fatalf("系统配置 must be a top-level group with 5 children: %#v", items)
+		t.Fatalf("系统配置 must be a top-level group with 6 children: %#v", items)
 	}
 }

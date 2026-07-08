@@ -30,6 +30,7 @@ func DefaultMenuCatalog() []MenuItem {
 		{Code: "queue", ParentCode: "compute", Name: "队列状态", Path: "queue-status.html", Permission: "menu.compute.queue.view", RoutePermission: "route.queue.view", Resource: "queue", Type: "page", SortOrder: 32},
 		{Code: "nodes", ParentCode: "compute", Name: "节点状态", Path: "nodes.html", Permission: "menu.compute.nodes.view", RoutePermission: "route.compute.nodes.view", Resource: "nodes", Type: "page", SortOrder: 33},
 		{Code: "qos", ParentCode: "compute", Name: "QOS 策略", Path: "qos.html", Permission: "menu.compute.qos.view", RoutePermission: "route.compute.qos.view", Resource: "qos", Type: "page", SortOrder: 34},
+		{Code: "license_status", ParentCode: "compute", Name: "应用许可状态", Path: "license-status.html", Permission: "menu.license.status.view", RoutePermission: "route.license.status.view", Resource: "license.status", Type: "page", SortOrder: 35},
 		{Code: "data", Name: "数据管理", Type: "group", SortOrder: 40},
 		{Code: "files", ParentCode: "data", Name: "数据目录", Path: "data.html", Permission: "menu.data.files.view", RoutePermission: "route.data.files.view", Resource: "storage_files", Type: "page", SortOrder: 41},
 		{Code: "data_acl", ParentCode: "data", Name: "访问授权", Path: "data-acl.html", Permission: "menu.data.acl.view", RoutePermission: "route.data.acl.view", Resource: "storage_acl", Type: "page", SortOrder: 42},
@@ -51,6 +52,7 @@ func DefaultMenuCatalog() []MenuItem {
 		{Code: "slurm_config", ParentCode: "system", Name: "Slurm 配置", Path: "slurm.html", Permission: "menu.system.slurm.view", RoutePermission: "route.system.slurm.view", Resource: "config.slurm", Type: "page", SortOrder: 83},
 		{Code: "storage_config", ParentCode: "system", Name: "存储配置", Path: "storage.html", Permission: "menu.system.storage.view", RoutePermission: "route.system.storage.view", Resource: "storage.roots", Type: "page", SortOrder: 84},
 		{Code: "notify_config", ParentCode: "system", Name: "通知配置", Path: "notify.html", Permission: "menu.system.notify.view", RoutePermission: "route.system.notify.view", Resource: "config.notify", Type: "page", SortOrder: 85},
+		{Code: "license_config", ParentCode: "system", Name: "应用许可配置", Path: "license-config.html", Permission: "menu.license.config.view", RoutePermission: "route.license.config.view", Resource: "license.config", Type: "page", SortOrder: 86},
 	}
 }
 

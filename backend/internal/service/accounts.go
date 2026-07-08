@@ -171,41 +171,50 @@ type CreatedTeamWithLeader struct {
 }
 
 func validateCreateUser(input CreateUserInput) error {
-	if strings.TrimSpace(input.Username) == "" {
-		return fmt.Errorf("账号不能为空")
+	raw := input
+	input = normalizeCreateUserInput(input)
+	if err := validateLinuxAccountName(raw.Username, "账号"); err != nil {
+		return err
 	}
-	if strings.TrimSpace(input.DisplayName) == "" {
+	if input.DisplayName == "" {
 		return fmt.Errorf("姓名不能为空")
 	}
-	if !strings.Contains(strings.TrimSpace(input.Email), "@") {
-		return fmt.Errorf("邮箱格式不正确")
+	if err := validateEmailAddress(input.Email); err != nil {
+		return err
 	}
-	if strings.TrimSpace(input.Team) == "" {
+	if input.Unit == "" {
+		return fmt.Errorf("单位不能为空")
+	}
+	if input.Team == "" {
 		return fmt.Errorf("团队不能为空")
+	}
+	if err := validateHomeDirectoryForUser(raw.HomeDirectory, input.Username); err != nil {
+		return err
 	}
 	return nil
 }
 func validateCreateTeam(input CreateTeamInput) error {
-	if strings.TrimSpace(input.Name) == "" || strings.TrimSpace(input.GroupName) == "" {
-		return fmt.Errorf("团队名称和组名称不能为空")
+	raw := input
+	input = normalizeCreateTeamInput(input)
+	if input.Name == "" {
+		return fmt.Errorf("团队名称不能为空")
 	}
-	if strings.TrimSpace(input.Unit) == "" {
+	if err := validateLinuxAccountName(raw.GroupName, "LDAP/Linux 组名"); err != nil {
+		return err
+	}
+	if input.Unit == "" {
 		return fmt.Errorf("单位不能为空")
+	}
+	if raw.LeaderUsername != "" {
+		if err := validateLinuxAccountName(raw.LeaderUsername, "组长账号"); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 func normalizeCreateTeamWithLeader(input CreateTeamWithLeaderInput) CreateTeamWithLeaderInput {
-	input.Team.Name = strings.TrimSpace(input.Team.Name)
-	input.Team.GroupName = strings.TrimSpace(input.Team.GroupName)
-	input.Team.Unit = strings.TrimSpace(input.Team.Unit)
-	input.Team.LeaderUsername = strings.TrimSpace(input.Team.LeaderUsername)
-	input.Team.ResourcePolicy = strings.TrimSpace(input.Team.ResourcePolicy)
-	input.Leader.Username = strings.TrimSpace(input.Leader.Username)
-	input.Leader.DisplayName = strings.TrimSpace(input.Leader.DisplayName)
-	input.Leader.Email = strings.TrimSpace(input.Leader.Email)
-	input.Leader.Unit = strings.TrimSpace(input.Leader.Unit)
-	input.Leader.Team = strings.TrimSpace(input.Leader.Team)
-	input.Leader.HomeDirectory = strings.TrimSpace(input.Leader.HomeDirectory)
+	input.Team = normalizeCreateTeamInput(input.Team)
+	input.Leader = normalizeCreateUserInput(input.Leader)
 	if input.Team.GroupName == "" {
 		input.Team.GroupName = input.Team.Name
 	}
@@ -221,8 +230,16 @@ func normalizeCreateTeamWithLeader(input CreateTeamWithLeaderInput) CreateTeamWi
 	return input
 }
 func validateCreateTeamWithLeader(input CreateTeamWithLeaderInput) (CreateTeamWithLeaderInput, error) {
+	raw := input
 	input = normalizeCreateTeamWithLeader(input)
-	if err := validateCreateTeam(input.Team); err != nil {
+	teamForValidation := input.Team
+	if raw.Team.GroupName != "" {
+		teamForValidation.GroupName = raw.Team.GroupName
+	}
+	if raw.Team.LeaderUsername != "" {
+		teamForValidation.LeaderUsername = raw.Team.LeaderUsername
+	}
+	if err := validateCreateTeam(teamForValidation); err != nil {
 		return input, err
 	}
 	if input.Leader.Username == "" {
@@ -237,7 +254,10 @@ func validateCreateTeamWithLeader(input CreateTeamWithLeaderInput) (CreateTeamWi
 	if input.Leader.Unit != input.Team.Unit {
 		return input, fmt.Errorf("组长单位必须与用户组单位一致")
 	}
-	if err := validateCreateUser(input.Leader); err != nil {
+	leaderForValidation := input.Leader
+	leaderForValidation.Username = raw.Leader.Username
+	leaderForValidation.HomeDirectory = raw.Leader.HomeDirectory
+	if err := validateCreateUser(leaderForValidation); err != nil {
 		return input, err
 	}
 	for i, grant := range input.StorageGrants {
@@ -264,6 +284,7 @@ func (s *Services) CreatePlatformUser(ctx context.Context, input CreateUserInput
 	if err := validateCreateUser(input); err != nil {
 		return CreatedAccount{}, err
 	}
+	input = normalizeCreateUserInput(input)
 	var teamID int64
 	var gid int
 	err := s.DB.QueryRowContext(ctx, `SELECT id FROM teams WHERE name=$1 OR group_name=$1 LIMIT 1`, input.Team).Scan(&teamID)
@@ -326,8 +347,12 @@ func (s *Services) CreatePlatformUser(ctx context.Context, input CreateUserInput
 }
 
 func (s *Services) UpdatePlatformUser(ctx context.Context, username string, input UpdateUserInput) (AccountUser, error) {
-	if strings.TrimSpace(input.DisplayName) == "" || !strings.Contains(input.Email, "@") {
-		return AccountUser{}, fmt.Errorf("姓名和有效邮箱必填")
+	input = normalizeUpdateUserInput(input)
+	if input.DisplayName == "" {
+		return AccountUser{}, fmt.Errorf("姓名不能为空")
+	}
+	if err := validateEmailAddress(input.Email); err != nil {
+		return AccountUser{}, err
 	}
 	if err := s.LDAP.UpdateUser(username, input.DisplayName, input.Email); err != nil {
 		return AccountUser{}, err
@@ -341,6 +366,7 @@ func (s *Services) CreatePlatformTeam(ctx context.Context, input CreateTeamInput
 	if err := validateCreateTeam(input); err != nil {
 		return AccountTeam{}, err
 	}
+	input = normalizeCreateTeamInput(input)
 	var unitID int64
 	if err := s.DB.QueryRowContext(ctx, `SELECT id FROM units WHERE name=$1 OR code=$1 LIMIT 1`, input.Unit).Scan(&unitID); err != nil {
 		return AccountTeam{}, fmt.Errorf("单位 %s 不存在", input.Unit)
@@ -547,9 +573,16 @@ DO UPDATE SET status='active',updated_at=now()`, input.Leader.Username, strconv.
 }
 
 func (s *Services) UpdatePlatformTeam(ctx context.Context, current string, input CreateTeamInput) (AccountTeam, error) {
+	current = strings.TrimSpace(current)
 	if strings.TrimSpace(input.Name) == "" {
 		return AccountTeam{}, fmt.Errorf("团队名称不能为空")
 	}
+	if input.LeaderUsername != "" {
+		if err := validateLinuxAccountName(input.LeaderUsername, "组长账号"); err != nil {
+			return AccountTeam{}, err
+		}
+	}
+	input = normalizeCreateTeamInput(input)
 	var item AccountTeam
 	err := s.DB.QueryRowContext(ctx, `UPDATE teams SET name=$2,leader_username=$3,resource_policy=$4,updated_at=now() WHERE name=$1 OR group_name=$1 RETURNING name,group_name,$5,leader_username,resource_policy,status`, current, input.Name, input.LeaderUsername, input.ResourcePolicy, input.Unit).Scan(&item.Name, &item.GroupName, &item.Unit, &item.LeaderUsername, &item.ResourcePolicy, &item.Status)
 	return item, err
@@ -609,10 +642,19 @@ func (s *Services) DeletePlatformTeam(ctx context.Context, name string) error {
 }
 
 func (s *Services) SaveUnit(ctx context.Context, current string, input UnitInput) (AccountUnit, error) {
-	input.Name, input.Code, input.Admin = strings.TrimSpace(input.Name), strings.TrimSpace(input.Code), strings.TrimSpace(input.Admin)
-	if input.Name == "" || input.Code == "" {
+	current = strings.TrimSpace(current)
+	if strings.TrimSpace(input.Name) == "" || strings.TrimSpace(input.Code) == "" {
 		return AccountUnit{}, fmt.Errorf("单位名称和编码不能为空")
 	}
+	if err := validateUnitCode(input.Code); err != nil {
+		return AccountUnit{}, err
+	}
+	if input.Admin != "" {
+		if err := validateLinuxAccountName(input.Admin, "单位管理员账号"); err != nil {
+			return AccountUnit{}, err
+		}
+	}
+	input = normalizeUnitInput(input)
 	if input.Status == "" {
 		input.Status = "active"
 	}
@@ -644,9 +686,18 @@ func (s *Services) SaveRole(ctx context.Context, current string, input RoleInput
 	return item, err
 }
 func (s *Services) CreateAdminUser(ctx context.Context, input AdminCreate, createdBy string) (AdminUser, error) {
-	input.Username, input.Email = strings.TrimSpace(input.Username), strings.TrimSpace(input.Email)
-	if input.Username == "" || !strings.Contains(input.Email, "@") || input.RoleName == "" || len(input.Password) < 8 {
-		return AdminUser{}, fmt.Errorf("管理员账号、有效邮箱、角色和至少 8 位密码必填")
+	if err := validateLinuxAccountName(input.Username, "管理员账号"); err != nil {
+		return AdminUser{}, err
+	}
+	if err := validateEmailAddress(input.Email); err != nil {
+		return AdminUser{}, err
+	}
+	input = normalizeAdminCreateInput(input)
+	if input.RoleName == "" {
+		return AdminUser{}, fmt.Errorf("管理员角色不能为空")
+	}
+	if len(input.Password) < 8 {
+		return AdminUser{}, fmt.Errorf("管理员密码至少 8 位")
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {

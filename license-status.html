@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="assets/logos/simplehpc-favicon.png">
+<title>SimpleHPC — 应用许可状态</title>
+<link rel="stylesheet" href="css/theme.css?v=20260708license-fix3">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand"><img src="assets/logos/simplehpc-navbar-horizontal.png" alt="SimpleHPC" class="brand-logo"></div>
+    <ul class="nav"></ul>
+    <div class="sidebar-user"><div class="avatar">管</div><div><div style="font-size:13px;font-weight:600;">管理员</div><div style="font-size:11px;color:var(--muted);">cluster_admin</div></div></div>
+  </aside>
+  <header class="header">
+    <h1 class="header-title">应用许可状态</h1>
+    <div class="header-actions">
+      <span id="licenseStatusUpdated" class="muted-text">最后更新：—</span>
+      <button class="btn-icon" type="button" id="licenseStatusRefresh" aria-label="刷新">⟳</button>
+      <div class="avatar" data-dropdown='{"html":"&lt;button class=&quot;_shpc-dropdown-item&quot; onclick=&quot;App.openProfileModal()&quot;&gt;个人资料&lt;/button&gt;&lt;button class=&quot;_shpc-dropdown-item&quot; onclick=&quot;App.openPasswordDrawer()&quot;&gt;修改密码&lt;/button&gt;&lt;div class=&quot;_shpc-dropdown-divider&quot;&gt;&lt;/div&gt;&lt;button class=&quot;_shpc-dropdown-item&quot; style=&quot;color:var(--danger)&quot; onclick=&quot;App.logout()&quot;&gt;退出登录&lt;/button&gt;","width":"160px","placement":"bottom-end"}'>管</div>
+    </div>
+  </header>
+  <main class="main license-page">
+    <section class="license-status-head">
+      <div>
+        <span class="license-eyebrow">Commercial Software License Center</span>
+        <h2>License 监控</h2>
+        <p>统一监控商业软件 License 服务状态、用量趋势、Feature 占用、用户与作业明细。</p>
+      </div>
+      <div class="license-status-actions">
+        <button class="btn btn-primary license-action-pill" type="button" id="licenseStatusRefreshInline">刷新数据</button>
+        <a class="btn license-action-pill" href="license-config.html">进入配置</a>
+      </div>
+    </section>
+
+    <section class="license-filter-bar">
+      <select id="licenseStatusAppFilter" class="select-field"><option value="">全部软件</option></select>
+      <select id="licenseStatusFeatureFilter" class="select-field"><option value="">全部 Feature</option></select>
+      <select id="licenseStatusStateFilter" class="select-field">
+        <option value="">全部状态</option>
+        <option value="running">使用中</option>
+        <option value="expired">即将到期</option>
+        <option value="full">已满载</option>
+        <option value="abnormal">服务异常</option>
+      </select>
+      <input id="licenseStatusUserFilter" class="search-field" placeholder="搜索用户名">
+      <input id="licenseStatusJobFilter" class="search-field" placeholder="搜索作业 ID">
+    </section>
+
+    <section id="licenseOverviewCards" class="license-overview-grid"></section>
+
+    <section class="license-monitor-grid">
+      <div class="license-panel license-software-panel">
+        <div class="license-panel-head">
+          <div><h3>监控软件</h3><p>点击软件后联动右侧趋势、Feature、占用和告警；详情在弹窗中查看。</p></div>
+        </div>
+        <div id="licenseAppList" class="license-app-list"></div>
+      </div>
+
+      <div class="license-panel license-trend-panel">
+        <div class="license-trend-head">
+          <div>
+            <h3 id="licenseTrendTitle">License 使用趋势</h3>
+            <p id="licenseTrendMeta">选择左侧软件查看用量历史趋势。</p>
+          </div>
+          <div class="license-trend-toolbar">
+            <span id="licenseTrendSample" class="muted-text">采样：—</span>
+            <div class="license-range-tabs" role="group" aria-label="时间范围">
+              <button type="button" class="license-range-btn active" data-license-range="24h">24h</button>
+              <button type="button" class="license-range-btn" data-license-range="7d">7天</button>
+              <button type="button" class="license-range-btn" data-license-range="30d">30天</button>
+              <button type="button" class="license-range-btn" data-license-range="90d">90天</button>
+              <button type="button" class="license-range-btn" data-license-range="1y">1年</button>
+            </div>
+          </div>
+        </div>
+        <div id="licenseTrendChart" class="license-trend-chart"></div>
+      </div>
+    </section>
+
+    <section class="license-lower-grid">
+      <div class="license-panel license-feature-panel">
+        <div class="license-panel-head compact">
+          <div><h3>Feature 使用统计</h3><p id="licenseFeatureSummary">按当前软件统计 Feature 总量、使用中、空闲、排队和健康状态。</p></div>
+        </div>
+        <div class="table-wrap compact license-feature-table-scroll">
+          <table class="file-table">
+            <thead><tr><th>Feature</th><th>总点数</th><th>使用中</th><th>空闲</th><th>使用率</th><th>排队</th><th>状态</th></tr></thead>
+            <tbody id="licenseFeatureRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="license-panel license-alert-panel">
+        <div class="license-panel-head compact">
+          <div><h3>告警摘要</h3><p>高负载、满载、服务异常和采集失败会进入告警列表。</p></div>
+        </div>
+        <div id="licenseAlertRows" class="license-alert-list compact"></div>
+      </div>
+    </section>
+
+    <section class="license-panel license-main-table-panel">
+      <div class="license-panel-head compact">
+        <div><h3>当前占用明细</h3><p>查看当前哪些用户、作业和节点正在占用 License。</p></div>
+      </div>
+      <div class="table-wrap compact license-table-scroll">
+        <table class="file-table">
+          <thead><tr><th>软件</th><th>Feature</th><th>用户</th><th>作业ID</th><th>节点</th><th>点数</th><th>已用时长</th><th>状态</th></tr></thead>
+          <tbody id="licenseSessionRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="licenseDetailModal" class="license-detail-modal" hidden aria-hidden="true">
+      <div class="license-detail-backdrop" data-license-detail-close></div>
+      <div class="license-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="licenseDetailTitle">
+        <div class="license-detail-header">
+          <div class="license-detail-title-wrap">
+            <span id="licenseDetailIcon" class="license-app-icon"></span>
+            <div>
+              <h3 id="licenseDetailTitle">License 详情</h3>
+              <p id="licenseDetailMeta">—</p>
+            </div>
+          </div>
+          <button class="btn-icon" type="button" data-license-detail-close aria-label="关闭">×</button>
+        </div>
+        <div class="license-detail-body">
+          <div id="licenseDetailMetrics" class="license-detail-metrics"></div>
+          <div class="license-detail-grid">
+            <section class="license-detail-section">
+              <div class="license-detail-section-head">
+                <div>
+                  <h4>License 使用分布</h4>
+                  <p id="licenseDetailFeatureHint">按 Feature 展示总点数、使用中、空闲和排队情况。</p>
+                </div>
+                <input id="licenseDetailFeatureSearch" class="search-field compact" placeholder="搜索 Feature">
+              </div>
+              <div class="license-detail-chart" id="licenseDetailChart"></div>
+              <div class="table-wrap compact license-detail-table-scroll">
+                <table class="file-table">
+                  <thead><tr><th>Feature</th><th>总点数</th><th>使用中</th><th>空闲</th><th>使用率</th><th>排队</th><th>状态</th></tr></thead>
+                  <tbody id="licenseDetailFeatureRows"></tbody>
+                </table>
+              </div>
+            </section>
+            <section class="license-detail-section">
+              <div class="license-detail-section-head">
+                <div><h4>当前占用与告警</h4><p>仅展示当前软件相关用户、作业、节点和告警。</p></div>
+              </div>
+              <div class="table-wrap compact license-detail-session-scroll">
+                <table class="file-table">
+                  <thead><tr><th>用户</th><th>作业ID</th><th>Feature</th><th>节点</th><th>点数</th><th>已用时长</th></tr></thead>
+                  <tbody id="licenseDetailSessionRows"></tbody>
+                </table>
+              </div>
+              <div id="licenseDetailAlerts" class="license-alert-list compact"></div>
+            </section>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="js/license-status.js?v=20260708license-fix3"></script>
+<script src="js/app.js?v=20260707session"></script>
+</body>
+</html>

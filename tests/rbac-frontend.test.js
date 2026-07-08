@@ -31,12 +31,20 @@ test('dynamic navigation renders first-level menus into the global top navigatio
   assert.match(rbac, /topnavPrimaryMenu/);
   assert.match(rbac, /topnav-primary-list/);
   assert.match(rbac, /topbar-brand-logo/);
+  assert.match(rbac, /topbar-brand-menu/);
+  assert.match(rbac, /topbar-brand-home/);
+  assert.match(rbac, /快速跳转仪表盘/);
   assert.match(rbac, /menu-overview-overlay/);
   assert.match(rbac, /layout--topnav/);
   assert.match(rbac, /shpc-topnav-enabled/);
   assert.match(rbac, /groupLabel/);
   assert.doesNotMatch(rbac, /topnavGroup\(/);
   assert.doesNotMatch(rbac, /querySelector\(['"]\\.sidebar \\.nav['"]\);\s*if \(!nav \|\| !context\) return;\s*nav\.innerHTML/s);
+});
+
+test('legacy static shell is hidden before top navigation mounts', () => {
+  assert.match(theme, /html:not\(\.shpc-topnav-enabled\) \.layout > \.sidebar/);
+  assert.match(theme, /html:not\(\.shpc-topnav-enabled\) \.layout > \.header/);
 });
 
 test('menu overview keeps categories, favorites and drag layout support', () => {

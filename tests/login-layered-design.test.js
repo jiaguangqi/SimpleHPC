@@ -13,10 +13,10 @@ test('login page uses HTML/CSS layout with a standalone server visual', () => {
   assert.doesNotMatch(loginHTML, /--login-hero-image/);
 });
 
-test('login page keeps logo mark and platform name as separate HTML layers', () => {
-  assert.match(loginHTML, /assets\/logos\/simplehpc-mark\.svg/);
-  assert.match(loginHTML, /<span class="login-brand-name">Simple<span>HPC<\/span><\/span>/);
-  assert.match(loginHTML, /<div class="login-brand-name">Simple<span>HPC<\/span><\/div>/);
+test('login page uses generated SimpleHPC logo assets', () => {
+  assert.match(loginHTML, /assets\/logos\/simplehpc-favicon\.png/);
+  assert.match(loginHTML, /assets\/logos\/simplehpc-navbar-horizontal\.png/);
+  assert.match(loginHTML, /assets\/logos\/simplehpc-login-vertical\.png/);
 });
 
 test('login page keeps exactly four feature entries', () => {

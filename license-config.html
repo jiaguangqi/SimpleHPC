@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="assets/logos/simplehpc-favicon.png">
+<title>SimpleHPC — 应用许可配置</title>
+<link rel="stylesheet" href="css/theme.css?v=20260708license-fix3">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand"><img src="assets/logos/simplehpc-navbar-horizontal.png" alt="SimpleHPC" class="brand-logo"></div>
+    <ul class="nav"></ul>
+    <div class="sidebar-user"><div class="avatar">管</div><div><div style="font-size:13px;font-weight:600;">管理员</div><div style="font-size:11px;color:var(--muted);">cluster_admin</div></div></div>
+  </aside>
+  <header class="header">
+    <h1 class="header-title">应用许可配置</h1>
+    <div class="header-actions">
+      <input class="search-field" placeholder="搜索软件、License Server..." id="globalSearch">
+      <button class="btn-icon" aria-label="通知" data-dropdown='{"html":"<div class=\"_shpc-dropdown-item\">通知消息</div><div class=\"_shpc-dropdown-item\"><span style=\"color:var(--success)\">●</span> 系统运行正常</div>","width":"240px","placement":"bottom-end"}'>🔔</button>
+      <div class="avatar" data-dropdown='{"html":"&lt;button class=&quot;_shpc-dropdown-item&quot; onclick=&quot;App.openProfileModal()&quot;&gt;个人资料&lt;/button&gt;&lt;button class=&quot;_shpc-dropdown-item&quot; onclick=&quot;App.openPasswordDrawer()&quot;&gt;修改密码&lt;/button&gt;&lt;div class=&quot;_shpc-dropdown-divider&quot;&gt;&lt;/div&gt;&lt;button class=&quot;_shpc-dropdown-item&quot; style=&quot;color:var(--danger)&quot; onclick=&quot;App.logout()&quot;&gt;退出登录&lt;/button&gt;","width":"160px","placement":"bottom-end"}'>管</div>
+    </div>
+  </header>
+  <main class="main license-page">
+    <section class="license-hero">
+      <div>
+        <div class="eyebrow">LICENSE SERVER INTEGRATION</div>
+        <h2>应用许可配置</h2>
+        <p>配置商业软件 License Server、采集命令、License 管理器、服务状态和告警阈值。配置后可在资源状态中实时查看用量和占用明细。</p>
+      </div>
+      <div class="license-hero-metrics">
+        <div><span id="licenseConfigTotal">0</span><small>已接入软件</small></div>
+        <div><span id="licenseConfigEnabled">0</span><small>启用中</small></div>
+        <div><span id="licenseConfigAbnormal">0</span><small>异常服务</small></div>
+      </div>
+    </section>
+
+    <section class="license-config-tabs" role="tablist" aria-label="应用许可配置子页面">
+      <button class="license-tab active" type="button" data-license-tab="apps">管理应用</button>
+      <button class="license-tab" type="button" data-license-tab="managers">License 管理器</button>
+      <button class="license-tab" type="button" data-license-tab="licenses">许可证管理</button>
+      <button class="license-tab" type="button" data-license-tab="logs">采集日志</button>
+    </section>
+
+    <section class="license-toolbar glass-card">
+      <button class="btn btn-primary" type="button" id="licensePrimaryActionBtn">新增许可证</button>
+      <input id="licenseConfigSearch" class="search-field" placeholder="搜索应用、管理器、License Server...">
+      <select id="licenseConfigEnabledFilter" class="select-field">
+        <option value="">全部状态</option>
+        <option value="true">启用</option>
+        <option value="false">禁用</option>
+      </select>
+      <button class="btn btn-ghost" type="button" id="licenseRefreshBtn">刷新</button>
+    </section>
+
+    <section id="licenseAppsPanel" class="license-subpage">
+      <div class="license-panel">
+        <div class="license-panel-head">
+          <div>
+            <h3>管理应用</h3>
+            <p>维护常用商业软件名称、分类、厂商和图标，新增许可证时可直接套用。</p>
+          </div>
+          <button class="btn btn-primary" type="button" id="licenseAddAppBtn">添加应用</button>
+        </div>
+        <div id="licenseAppCatalog" class="license-catalog-grid"></div>
+      </div>
+    </section>
+
+    <section id="licenseManagersPanel" class="license-subpage" hidden>
+      <div class="license-panel">
+        <div class="license-panel-head">
+          <div>
+            <h3>License 管理器管理</h3>
+            <p>维护 lmstat、lmutil、rlmutil 等采集工具路径和默认参数，许可证配置会用它生成采集命令。</p>
+          </div>
+          <button class="btn btn-primary" type="button" id="licenseAddManagerBtn">添加管理器</button>
+        </div>
+        <div id="licenseManagerCatalog" class="license-manager-table-wrap"></div>
+      </div>
+    </section>
+
+    <section id="licenseServersPanel" class="license-subpage" hidden>
+      <div class="license-panel">
+        <div class="license-panel-head">
+          <div>
+            <h3>许可证管理</h3>
+            <p>对接应用软件 License Server，填写 IP、端口并选择 License 管理器后测试采集。</p>
+          </div>
+        </div>
+        <div class="license-server-workbench">
+          <aside class="license-server-list-pane">
+            <div id="licenseConfigList" class="license-config-list"></div>
+          </aside>
+          <section id="licenseInlineEditor" class="license-config-editor"></section>
+        </div>
+      </div>
+    </section>
+
+    <section id="licenseLogsPanel" class="license-subpage" hidden>
+      <div class="license-panel">
+        <div class="license-panel-head">
+          <div>
+            <h3>采集日志</h3>
+            <p>查看最近 License Server 采集结果、失败原因和原始输出摘要，便于定位采集命令或服务异常。</p>
+          </div>
+          <button class="btn btn-ghost" type="button" id="licenseLogsRefreshBtn">刷新日志</button>
+        </div>
+        <div id="licenseCollectLogList" class="license-log-list"></div>
+      </div>
+    </section>
+  </main>
+</div>
+<script src="js/license-config.js?v=20260708license-fix3"></script>
+<script src="js/app.js?v=20260707session"></script>
+</body>
+</html>

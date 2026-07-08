@@ -72,6 +72,73 @@ WHERE source LIKE 'slurm-node:%' AND status IN ('active','acknowledged')`
 		query += " AND source NOT IN (" + strings.Join(placeholders, ",") + ")"
 	}
 	_, err = s.DB.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	return s.refreshLicenseServiceAlerts(ctx)
+}
+
+func (s *Services) refreshLicenseServiceAlerts(ctx context.Context) error {
+	if s.DB == nil {
+		return nil
+	}
+	configs, err := s.ListLicenseConfigs(ctx, "", "true")
+	if err != nil {
+		message := strings.ToLower(err.Error())
+		if strings.Contains(message, "license_servers") || strings.Contains(message, "does not exist") || strings.Contains(message, "no such table") {
+			return nil
+		}
+		return err
+	}
+	candidates := []DashboardAlert{}
+	activeSources := []string{}
+	for _, cfg := range configs {
+		serviceName := strings.TrimSpace(cfg.ServiceName)
+		if serviceName == "" {
+			continue
+		}
+		status := serviceStatus(ctx, serviceName, cfg.TimeoutSec)
+		_, _ = s.DB.ExecContext(ctx, `UPDATE license_servers SET service_status=$2,updated_at=now() WHERE id=$1`, cfg.ID, status)
+		if status == "active" || status == "unmanaged" {
+			continue
+		}
+		level := "warning"
+		if status == "failed" || status == "inactive" || status == "unknown" {
+			level = "critical"
+		}
+		candidates = append(candidates, DashboardAlert{
+			Level:   level,
+			Status:  "active",
+			Title:   fmt.Sprintf("%s License 服务异常", cfg.AppName),
+			Message: fmt.Sprintf("systemd 服务 %s 当前状态：%s", serviceName, status),
+			Source:  fmt.Sprintf("license-service:%d", cfg.ID),
+		})
+	}
+	for _, item := range candidates {
+		activeSources = append(activeSources, item.Source)
+		_, err := s.DB.ExecContext(ctx, `
+INSERT INTO dashboard_alerts (level,status,title,message,source)
+SELECT $1,'active',$2,$3,$4
+WHERE NOT EXISTS (
+  SELECT 1 FROM dashboard_alerts
+  WHERE source=$4 AND status IN ('active','acknowledged')
+)`, item.Level, item.Title, item.Message, item.Source)
+		if err != nil {
+			return err
+		}
+	}
+	query := `UPDATE dashboard_alerts SET status='resolved',resolved_at=now()
+WHERE source LIKE 'license-service:%' AND status IN ('active','acknowledged')`
+	args := []any{}
+	if len(activeSources) > 0 {
+		placeholders := make([]string, len(activeSources))
+		for index, source := range activeSources {
+			args = append(args, source)
+			placeholders[index] = "$" + strconv.Itoa(index+1)
+		}
+		query += " AND source NOT IN (" + strings.Join(placeholders, ",") + ")"
+	}
+	_, err = s.DB.ExecContext(ctx, query, args...)
 	return err
 }
 

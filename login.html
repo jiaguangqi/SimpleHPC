@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>simpleHPC — 登录</title>
-<link rel="icon" href="data:,">
-<link rel="stylesheet" href="css/theme.css?v=20260705navdrop2">
+<link rel="icon" type="image/png" href="assets/logos/simplehpc-favicon.png">
+<link rel="stylesheet" href="css/theme.css?v=20260705brandnav1">
 <style>
   :root {
     --login-blue: #007aff;
@@ -73,11 +73,17 @@
     left: clamp(72px, 7vw, 140px);
     display: flex;
     align-items: center;
-    gap: 12px;
-    color: #111827;
-    font-size: 22px;
-    font-weight: 820;
-    letter-spacing: -.045em;
+    width: clamp(170px, 12vw, 230px);
+  }
+
+  .login-brand-logo-horizontal {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 58px;
+    object-fit: contain;
+    object-position: left center;
+    filter: drop-shadow(0 12px 24px rgba(15, 23, 42, .08));
   }
 
   .login-brand span span,
@@ -111,6 +117,14 @@
   .login-logo-mark {
     flex: 0 0 auto;
     object-fit: contain;
+  }
+
+  .login-logo-combo {
+    display: block;
+    width: min(240px, 62vw);
+    max-height: 168px;
+    object-fit: contain;
+    filter: drop-shadow(0 18px 32px rgba(15, 23, 42, .10));
   }
 
   .login-shell {
@@ -279,10 +293,11 @@
 
   .card-brand {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 14px;
-    margin-bottom: 12px;
+    gap: 0;
+    margin-bottom: 10px;
   }
 
   .card-brand .login-logo-mark {
@@ -592,8 +607,7 @@
   <img class="server-visual" src="assets/images/login-server-hero.webp" alt="" aria-hidden="true">
 
   <header class="login-brand">
-    <div class="logo-mark">S</div>
-    <span class="login-brand-name">Simple<span>HPC</span></span>
+    <img class="login-brand-logo-horizontal" src="assets/logos/simplehpc-navbar-horizontal.png" alt="SimpleHPC">
   </header>
 
   <section class="login-shell">
@@ -627,8 +641,7 @@
     <div class="login-right" aria-label="登录表单">
       <div class="login-card">
         <div class="card-brand">
-          <img class="login-logo-mark" src="assets/logos/simplehpc-mark.svg" alt="">
-          <div class="login-brand-name">Simple<span>HPC</span></div>
+          <img class="login-logo-combo" src="assets/logos/simplehpc-login-vertical.png" alt="SimpleHPC">
         </div>
         <div class="login-brand-sub">欢迎登录集群管理平台</div>
 
@@ -687,10 +700,30 @@
   </section>
 </div>
 
-<script src="js/app.js?v=20260704favnav"></script>
+<script src="js/app.js?v=20260707session"></script>
 <script>
 (function() {
   var activeType = 'admin';
+
+  function showLoginNotice() {
+    var params = new URLSearchParams(location.search || '');
+    var reason = params.get('reason') || '';
+    var storedReason = '';
+    try {
+      storedReason = sessionStorage.getItem('simplehpc_login_notice') || '';
+      sessionStorage.removeItem('simplehpc_login_notice');
+    } catch (_) {}
+    reason = reason || storedReason;
+    if (!reason) return;
+    var messages = {
+      expired: '登录已失效，请重新登录',
+      missing: '请先登录后再访问系统'
+    };
+    var errorEl = document.getElementById('loginError');
+    if (!errorEl) return;
+    errorEl.textContent = messages[reason] || '请重新登录';
+    errorEl.classList.add('show');
+  }
 
   function restoreSimpleHPCBrandHighlight() {
     document.querySelectorAll('.login-brand-name').forEach(function(el) {
@@ -704,6 +737,7 @@
   }
 
   restoreSimpleHPCBrandHighlight();
+  showLoginNotice();
   setTimeout(restoreSimpleHPCBrandHighlight, 120);
   document.addEventListener('platform-config-applied', restoreSimpleHPCBrandHighlight);
   new MutationObserver(restoreSimpleHPCBrandHighlight).observe(document.body, {

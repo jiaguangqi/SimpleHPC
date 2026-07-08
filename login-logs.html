@@ -1,4 +1,4 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><title>simpleHPC — 用户登录日志</title><link rel="stylesheet" href="css/theme.css?v=20260705navdrop2"></head>
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" type="image/png" href="assets/logos/simplehpc-favicon.png"><title>simpleHPC — 用户登录日志</title><link rel="stylesheet" href="css/theme.css?v=20260705brandnav1"></head>
 <body data-log-page="auth"><div class="layout">
 <aside class="sidebar"><div class="brand"><div class="brand-icon">S</div><span class="brand-name">simpleHPC</span></div><ul class="nav">
 <li class="nav-group-toggle" data-submenu="overview">概览</li><li class="nav-submenu" id="submenu-overview"><a class="nav-submenu-item" href="index.html">仪表盘</a></li>
@@ -13,4 +13,4 @@
 <main class="main"><div class="card"><div class="card-header"><div><div class="card-title">登录与退出事件</div><div class="card-subtitle">记录登录成功、失败和退出；不保存密码或完整会话令牌。</div></div></div>
 <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr auto;gap:10px;margin-bottom:16px"><input class="search-field" id="logKeyword" placeholder="账号、姓名或 IP"><select id="authEvent"><option value="">全部事件</option><option value="login">登录</option><option value="logout">退出</option></select><select id="authResult"><option value="">全部结果</option><option value="success">成功</option><option value="failed">失败</option></select><button class="btn btn-primary" id="applyLogFilters">查询</button></div>
 <div class="table-wrap"><table><thead><tr><th>时间</th><th>账号</th><th>类型</th><th>事件</th><th>结果</th><th>IP 地址</th><th>客户端</th></tr></thead><tbody id="logRows"><tr><td colspan="7" class="api-data-missing">正在读取真实登录日志...</td></tr></tbody></table></div><div id="logTotal" style="margin-top:12px;color:var(--muted);font-size:12px"></div></div></main></div>
-<script src="js/log-center.js?v=20260630"></script><script src="js/app.js?v=20260704favnav"></script></body></html>
+<script src="js/log-center.js?v=20260630"></script><script src="js/app.js?v=20260707session"></script></body></html>

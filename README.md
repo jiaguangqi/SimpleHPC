@@ -75,6 +75,15 @@ SimpleHPC 是一套面向高校、科研院所、超算/智算中心的小型 HP
 - 登录前公共配置接口仅返回平台名称和图片地址。
 - 图片资源保存到服务器资源目录，不使用 Base64 写入数据库。
 
+### 9. 应用软件 License 监控
+
+- 管理商业软件应用目录、应用 Logo、License 管理器和 License Server 配置。
+- 支持 FlexNet `lmstat`、`lmutil lmstat` 和 RLM `rlmutil` 等采集方式。
+- 支持测试连接、立即采集、原始输出查看、采集日志和错误提示。
+- 监控 License 服务状态、总点数、使用中、空闲、排队、使用率、高负载、过期提醒和异常服务。
+- 支持 License 使用趋势、Feature 使用统计、用户占用会话和告警摘要。
+- License 服务可配置 systemd 服务名，支持在测试环境中通过页面触发启动、停止和重启。
+
 ## 技术架构
 
 ```text
@@ -90,7 +99,8 @@ Go Backend
   ├─ LDAP Integration
   ├─ Storage Security Layer
   ├─ WebSSH Session Manager
-  └─ Inspection / Log / Notification Services
+  ├─ Inspection / Log / Notification Services
+  └─ Commercial Software License Monitor
 
 Infrastructure
   ├─ PostgreSQL
@@ -217,6 +227,6 @@ go test ./...
 
 ## 当前版本
 
-当前版本：`v0.2.1`。
+当前版本：`v0.3.0`。
 
 当前版本变更见：[CHANGELOG.md](CHANGELOG.md)。

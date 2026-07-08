@@ -8,6 +8,90 @@
   const $el = (sel, root) => (root || document).querySelector(sel);
   const $els = (sel, root) => Array.from((root || document).querySelectorAll(sel));
 
+  const AUTH_STORAGE_KEYS = [
+    'simplehpc_token',
+    'simplehpc_user',
+    'simplehpc_auth_type'
+  ];
+
+  function pageName() {
+    return (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+  }
+
+  function isLoginPage() {
+    const name = pageName();
+    return name === 'login.html' || name === 'login';
+  }
+
+  function clearAuthState(reason) {
+    AUTH_STORAGE_KEYS.forEach(key => {
+      try { localStorage.removeItem(key); } catch (_) {}
+    });
+    if (reason) {
+      try { sessionStorage.setItem('simplehpc_login_notice', reason); } catch (_) {}
+    }
+  }
+
+  function buildLoginURL(reason) {
+    const url = new URL('login.html', location.href);
+    if (reason) url.searchParams.set('reason', reason);
+    if (!isLoginPage()) {
+      const current = location.pathname + location.search + location.hash;
+      url.searchParams.set('redirect', current);
+    }
+    return url.href;
+  }
+
+  function redirectToLogin(reason) {
+    if (isLoginPage() || window.__simpleHPCRedirectingToLogin) return;
+    window.__simpleHPCRedirectingToLogin = true;
+    clearAuthState(reason || 'expired');
+    location.replace(buildLoginURL(reason || 'expired'));
+  }
+
+  function apiRequestPath(input) {
+    try {
+      const raw = typeof input === 'string' ? input : (input && input.url);
+      if (!raw) return '';
+      const url = new URL(raw, location.href);
+      if (url.origin !== location.origin) return '';
+      return url.pathname;
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function isAuthRedirectBypass(path) {
+    return [
+      '/api/v1/auth/login',
+      '/api/v1/auth/logout',
+      '/api/v1/auth/password-reset/request',
+      '/api/v1/auth/password-reset/confirm',
+      '/api/v1/config/platform/public',
+      '/api/health'
+    ].some(prefix => path === prefix || path.indexOf(prefix + '/') === 0);
+  }
+
+  (function installAuthFetchGuard() {
+    if (window.__simpleHPCFetchGuardInstalled || !window.fetch) return;
+    window.__simpleHPCFetchGuardInstalled = true;
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = function guardedFetch(input, init) {
+      return nativeFetch(input, init).then(response => {
+        const path = apiRequestPath(input);
+        if (
+          path &&
+          path.indexOf('/api/') === 0 &&
+          !isAuthRedirectBypass(path) &&
+          (response.status === 401 || response.status === 419)
+        ) {
+          redirectToLogin('expired');
+        }
+        return response;
+      });
+    };
+  })();
+
   function authHeaders(extra) {
     const headers = Object.assign({}, extra || {});
     const token = localStorage.getItem('simplehpc_token') || '';
@@ -510,6 +594,8 @@
       'slurm.html': [{ label: 'Slurm 配置', url: '/api/v1/config/slurm' }],
       'ldap.html': [{ label: 'LDAP 配置', url: '/api/v1/config/ldap' }],
       'notify.html': [{ label: '通知配置', url: '/api/v1/config/notify' }],
+      'license-config.html': [{ label: '应用许可配置', url: '/api/v1/license/configs' }],
+      'license-status.html': [{ label: '应用许可状态', url: '/api/v1/license/status' }],
       'monitoring.html': [
         { label: '监控概览', url: '/api/v1/overview' },
         { label: '节点状态', url: '/api/v1/slurm/nodes' }
@@ -649,7 +735,7 @@
     if (window.App?.authz) return run();
     document.documentElement.classList.add('rbac-pending');
     const script = document.createElement('script');
-    script.src = 'js/rbac.js?v=20260704favnav';
+    script.src = 'js/rbac.js?v=20260707session';
     script.onload = run;
     script.onerror = () => {
       document.documentElement.classList.remove('rbac-pending');
@@ -661,12 +747,9 @@
 
   // 登录检查：非登录页面且未登录则跳转
   (function checkAuth() {
-    var publicPages = ["/login.html", "/login"];
-    var currentPath = location.pathname;
-    var isPublic = publicPages.some(function(p) { return currentPath.indexOf(p) !== -1; });
     var token = localStorage.getItem("simplehpc_token");
-    if (!isPublic && !token) {
-      location.href = "login.html";
+    if (!isLoginPage() && !token) {
+      location.replace(buildLoginURL('missing'));
       return;
     }
   })();
@@ -683,6 +766,8 @@
     dropdown: (trigger, html, opts) => Dropdown.open(trigger, html, opts),
     authHeaders: authHeaders,
     apiFetch: apiFetch,
+    clearAuthState: clearAuthState,
+    redirectToLogin: redirectToLogin,
     wire: () => { wireDropdowns(document); $els('input[data-search-target]').forEach(wireSearchFilter); },
     openProfileModal: openProfileModal,
     openPasswordDrawer: () => Drawer.open({ title: '修改密码', content: '<div class="_shpc-form-grid--single" style="display:flex;flex-direction:column;gap:16px"><div class="_shpc-field"><label>当前密码</label><input type="password"></div><div class="_shpc-field"><label>新密码</label><input type="password"></div><div class="_shpc-field"><label>确认新密码</label><input type="password"></div></div>', onSubmit: () => Toast.show('密码已修改', 'success') }),
@@ -692,9 +777,7 @@
         await fetch('/api/v1/auth/logout', { method: 'POST', headers: token ? { Authorization: 'Bearer ' + token } : {} });
       } catch (_) {}
       Toast.show('已安全退出', 'info');
-      localStorage.removeItem("simplehpc_token");
-      localStorage.removeItem("simplehpc_user");
-      localStorage.removeItem("simplehpc_auth_type");
+      clearAuthState('');
       setTimeout(() => location.href = "login.html", 800);
     } })
   };
