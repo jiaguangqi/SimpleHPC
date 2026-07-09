@@ -57,6 +57,12 @@ func apiAction(method, path string) string {
 	if strings.HasSuffix(path, "/approve") || strings.HasSuffix(path, "/reject") {
 		return "review"
 	}
+	if strings.HasSuffix(path, "/slurm-sync") {
+		return "sync"
+	}
+	if strings.HasSuffix(path, "/default") {
+		return "set_default_project"
+	}
 	if strings.HasSuffix(path, "/test") {
 		return "test"
 	}
@@ -136,6 +142,8 @@ func apiResource(path string) string {
 		return "auth"
 	case trimmed == "overview" || trimmed == "dashboard" || strings.HasPrefix(trimmed, "dashboard/"):
 		return "dashboard"
+	case strings.HasPrefix(trimmed, "projects"):
+		return "projects"
 	case strings.HasPrefix(trimmed, "account/roles"), strings.HasPrefix(trimmed, "rbac/"):
 		return "roles"
 	case strings.HasPrefix(trimmed, "account/users"), strings.HasPrefix(trimmed, "ldap/"):

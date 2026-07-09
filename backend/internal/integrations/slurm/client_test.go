@@ -100,7 +100,7 @@ func TestHistoryIncludesNodeList(t *testing.T) {
 func TestJobDetailReturnsAccountingFields(t *testing.T) {
 	binDir := t.TempDir()
 	sacctPath := filepath.Join(binDir, "sacct")
-	script := "#!/bin/sh\nprintf '%s\\n' '935|job.sh|root|debug|normal|COMPLETED|1|1|1|30000M|billing=1,cpu=1,mem=30000M,node=1|2026-06-29T16:10:20|2026-06-29T16:10:20|2026-06-29T16:27:01|00:16:41|cae|/data/simpleHPC|slurm-%j.out|slurm-%j.err'\n"
+	script := "#!/bin/sh\nprintf '%s\\n' '935|job.sh|root|simplehpc|debug|normal|COMPLETED|1|1|1|30000M|billing=1,cpu=1,mem=30000M,node=1|2026-06-29T16:10:20|2026-06-29T16:10:20|2026-06-29T16:27:01|00:16:41|cae|/data/simpleHPC|slurm-%j.out|slurm-%j.err'\n"
 	if err := os.WriteFile(sacctPath, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -111,6 +111,9 @@ func TestJobDetailReturnsAccountingFields(t *testing.T) {
 	}
 	if detail.CPUs != "1" || detail.Requested != "billing=1,cpu=1,mem=30000M,node=1" {
 		t.Fatalf("JobDetail() resources = CPUs %q, requested %q", detail.CPUs, detail.Requested)
+	}
+	if detail.Account != "simplehpc" {
+		t.Fatalf("JobDetail().Account = %q, want simplehpc", detail.Account)
 	}
 	if detail.Start != "2026-06-29T16:10:20" || detail.End != "2026-06-29T16:27:01" {
 		t.Fatalf("JobDetail() times = start %q, end %q", detail.Start, detail.End)
@@ -130,7 +133,7 @@ func TestJobOutputReadsExpandedPathInsideWorkDir(t *testing.T) {
 		t.Fatal(err)
 	}
 	sacctPath := filepath.Join(binDir, "sacct")
-	row := "938|Shell|root|debug|normal|RUNNING|1|1|1|30000M|billing=1,cpu=1,mem=30000M,node=1|2026-06-29T19:54:51|2026-06-29T22:33:11|Unknown|00:37:40|cae|" + workDir + "|slurm-%j.out|slurm-%j.err"
+	row := "938|Shell|root|simplehpc|debug|normal|RUNNING|1|1|1|30000M|billing=1,cpu=1,mem=30000M,node=1|2026-06-29T19:54:51|2026-06-29T22:33:11|Unknown|00:37:40|cae|" + workDir + "|slurm-%j.out|slurm-%j.err"
 	script := "#!/bin/sh\nprintf '%s\\n' '" + row + "'\n"
 	if err := os.WriteFile(sacctPath, []byte(script), 0o755); err != nil {
 		t.Fatal(err)

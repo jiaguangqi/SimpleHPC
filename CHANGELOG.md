@@ -2,6 +2,64 @@
 
 本文档记录 SimpleHPC 的主要版本变更。格式参考 [Keep a Changelog](https://keepachangelog.com/)，版本号采用 `MAJOR.MINOR.PATCH` 语义化版本。
 
+## [0.4.0] - 2026-07-09
+
+### Added
+
+- 新增项目中心 / Project Workspace：
+  - 项目用于承载课题、成员、任务、数据空间、Slurm 作业和资源账本。
+  - 项目与 Slurm `account` 对齐，项目编码默认作为 Slurm Account。
+  - 支持项目创建、编辑、删除、搜索、状态筛选、详情查看和项目动态记录。
+  - 支持项目成员、项目任务、项目数据空间和项目作业关联管理。
+- 新增 Slurm Account 对接能力：
+  - 项目保存 Slurm Account、父级 Account、QOS、同步开关、同步状态和同步消息。
+  - 支持通过 `sacctmgr` 创建/维护 Account，并将项目成员关联到对应 Account。
+  - 支持为成员设置默认项目，后台同步为用户默认 Account。
+  - 新增项目同步接口和 RBAC 权限点。
+- 作业模板提交支持项目记账：
+  - 用户提交模板时可选择自己参与的项目。
+  - 后端校验用户是否有权使用所选项目 Account。
+  - 生成 Slurm 脚本时自动注入 `#SBATCH --account=<项目 Account>`。
+  - 提交成功后将作业记录关联到项目账本。
+- 作业列表支持项目视角：
+  - Slurm 同步作业记录新增 `account` 字段。
+  - 作业列表新增项目筛选和项目/Account 展示列。
+  - 作业详情展示项目和 Slurm Account。
+  - 项目详情页自动汇总同 Account 的 Slurm 作业。
+- 新增数据库迁移：
+  - `015_project_center`
+  - `016_project_slurm_account`
+
+### Changed
+
+- 导航新增“项目中心”，并纳入顶部导航和 RBAC 菜单权限。
+- 作业同步同时采集 `squeue` / `sacct` 中的 Account 字段，便于按项目归集。
+- 项目页采用工作台式布局，适配顶部导航后的宽屏和移动端基本阅读。
+- 作业模板页从项目入口跳转时可自动选中指定项目。
+
+### Fixed
+
+- 修复同步作业查询中使用 `sj.` 别名但缺少表别名导致的运行时 SQL 问题。
+- 修复新增迁移后嵌入迁移测试期望数量未更新的问题。
+- 修复项目页确认弹窗中的异步操作失败时缺少中文错误反馈的问题。
+
+### Deployment
+
+- 测试服务器 `/data/simpleHPC` 已部署并验证：
+  - 后端服务重启后保持 active。
+  - 数据库迁移已应用到 `016_project_slurm_account`。
+  - `/projects.html`、`/job-list.html`、`/js/projects.js`、`/js/job-templates.js` 返回 200。
+  - `/api/v1/projects`、`/api/v1/slurm/jobs`、`/api/v1/job-templates` smoke test 返回 200。
+  - 作业模板预览已验证生成 `#SBATCH --account=<项目 Account>`。
+  - 项目 Slurm 同步接口已验证返回 success。
+
+### Security
+
+- Slurm Account、QOS、Linux 用户名、项目编码和作业参数均进行格式校验。
+- Slurm Account 同步使用参数化外部命令调用，不拼接 shell 字符串。
+- 外部 Slurm 命令失败时返回脱敏中文错误，不暴露服务器敏感配置。
+- 本版本不包含真实 `.env`、密钥、数据库 dump、运行日志和后端构建二进制。
+
 ## [0.3.0] - 2026-07-08
 
 ### Added

@@ -102,6 +102,10 @@ type TemplateRun struct {
 	TemplateID   int64          `json:"templateId"`
 	TemplateName string         `json:"templateName"`
 	Username     string         `json:"username"`
+	ProjectID    int64          `json:"projectId,omitempty"`
+	ProjectCode  string         `json:"projectCode,omitempty"`
+	ProjectName  string         `json:"projectName,omitempty"`
+	SlurmAccount string         `json:"slurmAccount,omitempty"`
 	Kind         string         `json:"kind"`
 	Status       string         `json:"status"`
 	SlurmJobID   string         `json:"slurmJobId,omitempty"`
@@ -140,6 +144,88 @@ func (s *Services) templateAuthorized(ctx context.Context, id int64, user AuthUs
 	return false
 }
 
+type templateProjectSelection struct {
+	ID      int64
+	Code    string
+	Name    string
+	Account string
+}
+
+func (s *Services) templateRenderValuesWithProject(ctx context.Context, user AuthUser, values map[string]any) (map[string]any, templateProjectSelection, error) {
+	out := make(map[string]any, len(values)+3)
+	for key, value := range values {
+		out[key] = value
+	}
+	if s.DB == nil {
+		return out, templateProjectSelection{}, nil
+	}
+	projectID := anyInt64(values["projectId"])
+	account := strings.TrimSpace(valueString(values["account"], ""))
+	canManageAll := user.Type == "admin" || IsTemplateManager(user)
+	if projectID > 0 {
+		project, err := s.GetProject(ctx, projectID, user.Username, canManageAll)
+		if err != nil {
+			return nil, templateProjectSelection{}, errors.New("当前账号无权使用所选项目")
+		}
+		if strings.TrimSpace(project.SlurmAccount) == "" {
+			return nil, templateProjectSelection{}, errors.New("所选项目尚未配置 Slurm Account")
+		}
+		projectAccount := strings.TrimSpace(project.SlurmAccount)
+		if account != "" && account != projectAccount {
+			return nil, templateProjectSelection{}, errors.New("提交参数中的 Slurm Account 与所选项目不一致")
+		}
+		out["projectId"] = project.ID
+		out["projectCode"] = project.Code
+		out["projectName"] = project.Name
+		out["account"] = projectAccount
+		return out, templateProjectSelection{ID: project.ID, Code: project.Code, Name: project.Name, Account: projectAccount}, nil
+	}
+	projects, err := s.ListProjects(ctx, ProjectQuery{Username: user.Username, CanManageAll: canManageAll})
+	if err != nil {
+		return nil, templateProjectSelection{}, err
+	}
+	for _, project := range projects.Items {
+		projectAccount := strings.TrimSpace(project.SlurmAccount)
+		if projectAccount == "" {
+			continue
+		}
+		if account != "" && projectAccount == account || account == "" && project.CurrentUserDefault {
+			out["projectId"] = project.ID
+			out["projectCode"] = project.Code
+			out["projectName"] = project.Name
+			out["account"] = projectAccount
+			return out, templateProjectSelection{ID: project.ID, Code: project.Code, Name: project.Name, Account: projectAccount}, nil
+		}
+	}
+	if account != "" {
+		return nil, templateProjectSelection{}, errors.New("当前账号无权使用该 Slurm Account")
+	}
+	return out, templateProjectSelection{}, nil
+}
+
+func anyInt64(value any) int64 {
+	switch v := value.(type) {
+	case int64:
+		return v
+	case int:
+		return int64(v)
+	case float64:
+		return int64(v)
+	case string:
+		n, _ := strconv.ParseInt(strings.TrimSpace(v), 10, 64)
+		return n
+	default:
+		return 0
+	}
+}
+
+func nullInt64(value int64) any {
+	if value <= 0 {
+		return nil
+	}
+	return value
+}
+
 func (s *Services) PreviewTemplate(ctx context.Context, id int64, user AuthUser, values map[string]any) (string, error) {
 	item, err := s.GetJobTemplate(ctx, id, AuthUser{Username: user.Username, Type: "admin", Role: "cluster_admin"})
 	if err != nil {
@@ -151,7 +237,11 @@ func (s *Services) PreviewTemplate(ctx context.Context, id int64, user AuthUser,
 	if !s.templateAuthorized(ctx, id, user) {
 		return "", errors.New("当前账号未获得模板使用授权")
 	}
-	return RenderTemplateScript(item, values)
+	renderValues, _, err := s.templateRenderValuesWithProject(ctx, user, values)
+	if err != nil {
+		return "", err
+	}
+	return RenderTemplateScript(item, renderValues)
 }
 
 func (s *Services) SubmitTemplate(ctx context.Context, id int64, user AuthUser, values map[string]any) (TemplateRun, error) {
@@ -165,6 +255,10 @@ func (s *Services) SubmitTemplate(ctx context.Context, id int64, user AuthUser, 
 	if !s.templateAuthorized(ctx, id, user) {
 		return TemplateRun{}, errors.New("当前账号未获得模板使用授权")
 	}
+	submitValues, project, err := s.templateRenderValuesWithProject(ctx, user, values)
+	if err != nil {
+		return TemplateRun{}, err
+	}
 	submitUser, err := resolveTemplateSubmitUser(user, item.Kind, func(username string) error {
 		return lookupLinuxSubmitUser(ctx, username)
 	})
@@ -175,8 +269,8 @@ func (s *Services) SubmitTemplate(ctx context.Context, id int64, user AuthUser, 
 	if err != nil {
 		return TemplateRun{}, err
 	}
-	renderValues := make(map[string]any, len(values)+3)
-	for key, value := range values {
+	renderValues := make(map[string]any, len(submitValues)+3)
+	for key, value := range submitValues {
 		renderValues[key] = value
 	}
 	renderValues["SIMPLEHPC_RUN_TOKEN"] = token
@@ -187,11 +281,11 @@ func (s *Services) SubmitTemplate(ctx context.Context, id int64, user AuthUser, 
 	if err != nil {
 		return TemplateRun{}, err
 	}
-	raw, _ := json.Marshal(values)
-	run := TemplateRun{TemplateID: id, TemplateName: item.Name, Username: user.Username, Kind: item.Kind, Status: "submitting", Values: values, AccessToken: token}
-	err = s.DB.QueryRowContext(ctx, `INSERT INTO job_template_runs(template_id,template_version,template_name,username,kind,status,submitted_values,rendered_script,access_token)
-VALUES($1,$2,$3,$4,$5,'submitting',$6,$7,$8) RETURNING id,created_at`,
-		id, item.Version, item.Name, user.Username, item.Kind, raw, script, token).Scan(&run.ID, &run.CreatedAt)
+	raw, _ := json.Marshal(submitValues)
+	run := TemplateRun{TemplateID: id, TemplateName: item.Name, Username: user.Username, ProjectID: project.ID, ProjectCode: project.Code, ProjectName: project.Name, SlurmAccount: project.Account, Kind: item.Kind, Status: "submitting", Values: submitValues, AccessToken: token}
+	err = s.DB.QueryRowContext(ctx, `INSERT INTO job_template_runs(template_id,template_version,template_name,username,project_id,project_code,project_name,slurm_account,kind,status,submitted_values,rendered_script,access_token)
+VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'submitting',$10,$11,$12) RETURNING id,created_at`,
+		id, item.Version, item.Name, user.Username, nullInt64(project.ID), project.Code, project.Name, project.Account, item.Kind, raw, script, token).Scan(&run.ID, &run.CreatedAt)
 	if err != nil {
 		return TemplateRun{}, err
 	}
@@ -203,6 +297,14 @@ VALUES($1,$2,$3,$4,$5,'submitting',$6,$7,$8) RETURNING id,created_at`,
 	run.SlurmJobID, run.Status = jobID, "submitted"
 	_, err = s.DB.ExecContext(ctx, `UPDATE job_template_runs SET status='submitted',slurm_job_id=$2,updated_at=now() WHERE id=$1`, run.ID, jobID)
 	if err == nil {
+		if project.ID > 0 {
+			_, _ = s.DB.ExecContext(ctx, `
+INSERT INTO project_job_links(project_id,job_id,job_name,username,account,state,partition,linked_by)
+VALUES($1,$2,$3,$4,$5,'SUBMITTED',$6,$7)
+ON CONFLICT(project_id,job_id) DO UPDATE SET job_name=EXCLUDED.job_name,username=EXCLUDED.username,account=EXCLUDED.account,state=EXCLUDED.state,partition=EXCLUDED.partition,linked_by=EXCLUDED.linked_by,linked_at=now()`,
+				project.ID, jobID, valueString(renderValues["jobName"], item.Name), user.Username, project.Account, valueString(renderValues["partition"], ""), user.Username)
+			_ = s.recordProjectActivity(ctx, project.ID, user.Username, "job.submit", "job", jobID, "通过作业模板提交项目作业", map[string]any{"template": item.Name, "account": project.Account})
+		}
 		if syncErr := s.SyncCurrentSlurmJobs(ctx); syncErr != nil {
 			log.Printf("sync submitted template job %s: %v", jobID, syncErr)
 		}
@@ -613,8 +715,9 @@ func (s *Services) RegisterTemplateEndpoint(ctx context.Context, token, node str
 UPDATE job_template_runs
 SET target_node=$2,target_port=$3,protocol=$4,status='ready',updated_at=now()
 WHERE access_token=$1
-RETURNING id,template_id,template_name,username,kind,status,COALESCE(slurm_job_id,''),target_node,target_port,protocol,created_at`,
-		token, node, port, protocol).Scan(&run.ID, &run.TemplateID, &run.TemplateName, &run.Username, &run.Kind,
+RETURNING id,template_id,template_name,username,COALESCE(project_id,0),COALESCE(project_code,''),COALESCE(project_name,''),COALESCE(slurm_account,''),kind,status,COALESCE(slurm_job_id,''),target_node,target_port,protocol,created_at`,
+		token, node, port, protocol).Scan(&run.ID, &run.TemplateID, &run.TemplateName, &run.Username,
+		&run.ProjectID, &run.ProjectCode, &run.ProjectName, &run.SlurmAccount, &run.Kind,
 		&run.Status, &run.SlurmJobID, &run.TargetNode, &run.TargetPort, &run.Protocol, &run.CreatedAt)
 	if err != nil {
 		return TemplateRun{}, err
@@ -628,10 +731,11 @@ func (s *Services) TemplateRunByToken(ctx context.Context, token string) (Templa
 	var run TemplateRun
 	err := s.DB.QueryRowContext(ctx, `
 SELECT id,template_id,template_name,username,kind,status,COALESCE(slurm_job_id,''),
+ COALESCE(project_id,0),COALESCE(project_code,''),COALESCE(project_name,''),COALESCE(slurm_account,''),
  COALESCE(target_node,''),COALESCE(target_port,0),COALESCE(protocol,''),created_at
 FROM job_template_runs WHERE access_token=$1`, strings.TrimSpace(token)).
 		Scan(&run.ID, &run.TemplateID, &run.TemplateName, &run.Username, &run.Kind, &run.Status,
-			&run.SlurmJobID, &run.TargetNode, &run.TargetPort, &run.Protocol, &run.CreatedAt)
+			&run.SlurmJobID, &run.ProjectID, &run.ProjectCode, &run.ProjectName, &run.SlurmAccount, &run.TargetNode, &run.TargetPort, &run.Protocol, &run.CreatedAt)
 	if err != nil {
 		return TemplateRun{}, err
 	}
@@ -643,6 +747,7 @@ FROM job_template_runs WHERE access_token=$1`, strings.TrimSpace(token)).
 func (s *Services) ListTemplateRuns(ctx context.Context, user AuthUser) ([]TemplateRun, error) {
 	query := `
 SELECT id,template_id,template_name,username,kind,status,COALESCE(slurm_job_id,''),
+ COALESCE(project_id,0),COALESCE(project_code,''),COALESCE(project_name,''),COALESCE(slurm_account,''),
  COALESCE(target_node,''),COALESCE(target_port,0),COALESCE(protocol,''),access_token,submitted_values,created_at
 FROM job_template_runs`
 	args := []any{}
@@ -661,7 +766,7 @@ FROM job_template_runs`
 		var run TemplateRun
 		var valuesRaw []byte
 		if err := rows.Scan(&run.ID, &run.TemplateID, &run.TemplateName, &run.Username, &run.Kind,
-			&run.Status, &run.SlurmJobID, &run.TargetNode, &run.TargetPort, &run.Protocol,
+			&run.Status, &run.SlurmJobID, &run.ProjectID, &run.ProjectCode, &run.ProjectName, &run.SlurmAccount, &run.TargetNode, &run.TargetPort, &run.Protocol,
 			&run.AccessToken, &valuesRaw, &run.CreatedAt); err != nil {
 			return nil, err
 		}
@@ -678,6 +783,7 @@ FROM job_template_runs`
 func (s *Services) ListTemplateRunsByPermission(ctx context.Context, authz PermissionContext) ([]TemplateRun, error) {
 	query := `
 SELECT id,template_id,template_name,username,kind,status,COALESCE(slurm_job_id,''),
+ COALESCE(project_id,0),COALESCE(project_code,''),COALESCE(project_name,''),COALESCE(slurm_account,''),
  COALESCE(target_node,''),COALESCE(target_port,0),COALESCE(protocol,''),access_token,submitted_values,created_at
 FROM job_template_runs`
 	args := []any{}
@@ -708,7 +814,7 @@ SELECT username FROM platform_users WHERE team_id::text=ANY($1::text[]))`
 		var run TemplateRun
 		var valuesRaw []byte
 		if err := rows.Scan(&run.ID, &run.TemplateID, &run.TemplateName, &run.Username, &run.Kind,
-			&run.Status, &run.SlurmJobID, &run.TargetNode, &run.TargetPort, &run.Protocol,
+			&run.Status, &run.SlurmJobID, &run.ProjectID, &run.ProjectCode, &run.ProjectName, &run.SlurmAccount, &run.TargetNode, &run.TargetPort, &run.Protocol,
 			&run.AccessToken, &valuesRaw, &run.CreatedAt); err != nil {
 			return nil, err
 		}

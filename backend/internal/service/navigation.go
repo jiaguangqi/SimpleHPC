@@ -34,6 +34,8 @@ func DefaultMenuCatalog() []MenuItem {
 		{Code: "data", Name: "数据管理", Type: "group", SortOrder: 40},
 		{Code: "files", ParentCode: "data", Name: "数据目录", Path: "data.html", Permission: "menu.data.files.view", RoutePermission: "route.data.files.view", Resource: "storage_files", Type: "page", SortOrder: 41},
 		{Code: "data_acl", ParentCode: "data", Name: "访问授权", Path: "data-acl.html", Permission: "menu.data.acl.view", RoutePermission: "route.data.acl.view", Resource: "storage_acl", Type: "page", SortOrder: 42},
+		{Code: "projects", Name: "项目中心", Type: "group", SortOrder: 45},
+		{Code: "projects_overview", ParentCode: "projects", Name: "项目总览", Path: "projects.html", Permission: "menu.projects.overview.view", RoutePermission: "route.projects.overview.view", Resource: "projects", Type: "page", SortOrder: 46},
 		{Code: "jobs", Name: "作业管理", Type: "group", SortOrder: 50},
 		{Code: "templates", ParentCode: "jobs", Name: "作业模板", Path: "job-templates.html", Permission: "menu.jobs.templates.view", RoutePermission: "route.jobs.templates.view", Resource: "job_templates", Type: "page", SortOrder: 51},
 		{Code: "job_list", ParentCode: "jobs", Name: "作业列表", Path: "job-list.html", Permission: "menu.jobs.list.view", RoutePermission: "route.jobs.list.view", Resource: "jobs", Type: "page", SortOrder: 52},

@@ -596,6 +596,7 @@
       'notify.html': [{ label: '通知配置', url: '/api/v1/config/notify' }],
       'license-config.html': [{ label: '应用许可配置', url: '/api/v1/license/configs' }],
       'license-status.html': [{ label: '应用许可状态', url: '/api/v1/license/status' }],
+      'projects.html': [{ label: '项目中心', url: '/api/v1/projects' }],
       'monitoring.html': [
         { label: '监控概览', url: '/api/v1/overview' },
         { label: '节点状态', url: '/api/v1/slurm/nodes' }

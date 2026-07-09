@@ -4,17 +4,18 @@ import "testing"
 
 func TestBuildNavigationFlattensLDAPUserMenus(t *testing.T) {
 	permissions := map[string]struct{}{
-		"menu.dashboard.view":      {},
-		"menu.compute.queue.view":  {},
-		"menu.data.files.view":     {},
-		"menu.jobs.templates.view": {},
-		"menu.jobs.list.view":      {},
-		"menu.jobs.vnc.view":       {},
-		"menu.terminal.view":       {},
+		"menu.dashboard.view":         {},
+		"menu.compute.queue.view":     {},
+		"menu.data.files.view":        {},
+		"menu.projects.overview.view": {},
+		"menu.jobs.templates.view":    {},
+		"menu.jobs.list.view":         {},
+		"menu.jobs.vnc.view":          {},
+		"menu.terminal.view":          {},
 	}
 	items := BuildNavigation("ldap", permissions, DefaultMenuCatalog())
-	if len(items) != 7 {
-		t.Fatalf("flat menu count = %d, want 7: %#v", len(items), items)
+	if len(items) != 8 {
+		t.Fatalf("flat menu count = %d, want 8: %#v", len(items), items)
 	}
 	for _, item := range items {
 		if item.Type == "group" || len(item.Children) > 0 {
@@ -29,7 +30,8 @@ func TestBuildNavigationKeepsAdminTree(t *testing.T) {
 	hasGroup := false
 	hasLogGroup := false
 	hasSystemGroup := false
-	wantNames := []string{"仪表盘", "账户管理", "资源管理", "数据管理", "作业管理", "终端中心", "运维管理", "日志管理", "系统配置"}
+	hasProjectGroup := false
+	wantNames := []string{"仪表盘", "账户管理", "资源管理", "数据管理", "项目中心", "作业管理", "终端中心", "运维管理", "日志管理", "系统配置"}
 	if len(items) != len(wantNames) {
 		t.Fatalf("admin top-level menu count = %d, want %d: %#v", len(items), len(wantNames), items)
 	}
@@ -48,6 +50,9 @@ func TestBuildNavigationKeepsAdminTree(t *testing.T) {
 		if item.Code == "system" {
 			hasSystemGroup = item.Type == "group" && len(item.Children) == 6
 		}
+		if item.Code == "projects" {
+			hasProjectGroup = item.Type == "group" && len(item.Children) == 1
+		}
 	}
 	if !hasGroup {
 		t.Fatal("admin navigation was not grouped")
@@ -57,5 +62,8 @@ func TestBuildNavigationKeepsAdminTree(t *testing.T) {
 	}
 	if !hasSystemGroup {
 		t.Fatalf("系统配置 must be a top-level group with 6 children: %#v", items)
+	}
+	if !hasProjectGroup {
+		t.Fatalf("项目中心 must be a top-level group with 1 child: %#v", items)
 	}
 }

@@ -41,6 +41,7 @@ type Job struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	User      string `json:"user"`
+	Account   string `json:"account"`
 	Partition string `json:"partition"`
 	State     string `json:"state"`
 	Nodes     string `json:"nodes"`
@@ -71,6 +72,7 @@ type JobDetail struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	User      string `json:"user"`
+	Account   string `json:"account"`
 	Partition string `json:"partition"`
 	QOS       string `json:"qos"`
 	State     string `json:"state"`
@@ -178,18 +180,18 @@ func (c *Client) Nodes(ctx context.Context) ([]Node, error) {
 }
 
 func (c *Client) Jobs(ctx context.Context) ([]Job, error) {
-	out, err := c.run(ctx, "squeue", "-h", "-o", "%i|%j|%u|%P|%T|%D|%C|%M|%V|%R|%b")
+	out, err := c.run(ctx, "squeue", "-h", "-o", "%i|%j|%u|%a|%P|%T|%D|%C|%M|%V|%R|%b")
 	if err != nil {
 		return nil, err
 	}
 	rows := splitLines(out)
 	jobs := make([]Job, 0, len(rows))
 	for _, row := range rows {
-		cols := splitRow(row, 11)
+		cols := splitRow(row, 12)
 		jobs = append(jobs, Job{
-			ID: cols[0], Name: cols[1], User: cols[2], Partition: cols[3],
-			State: cols[4], Nodes: cols[5], CPUs: cols[6], Time: cols[7], Submit: cols[8],
-			GPUs: gpuCountFromGRES(cols[10]), NodeList: cols[9],
+			ID: cols[0], Name: cols[1], User: cols[2], Account: emptyNull(cols[3]), Partition: cols[4],
+			State: cols[5], Nodes: cols[6], CPUs: cols[7], Time: cols[8], Submit: cols[9],
+			GPUs: gpuCountFromGRES(cols[11]), NodeList: cols[10],
 		})
 	}
 	return jobs, nil
@@ -327,7 +329,7 @@ func (c *Client) JobDetail(ctx context.Context, jobID string) (JobDetail, error)
 		return JobDetail{}, err
 	}
 	out, err := c.run(ctx, "sacct", "-j", strings.TrimSpace(jobID), "-X", "--parsable2", "--noheader",
-		"--format=JobID,JobName,User,Partition,QOS,State,NNodes,AllocCPUS,ReqCPUS,ReqMem,ReqTRES,Submit,Start,End,Elapsed,NodeList,WorkDir,StdOut,StdErr")
+		"--format=JobID,JobName,User,Account,Partition,QOS,State,NNodes,AllocCPUS,ReqCPUS,ReqMem,ReqTRES,Submit,Start,End,Elapsed,NodeList,WorkDir,StdOut,StdErr")
 	if err != nil {
 		return JobDetail{}, err
 	}
@@ -335,12 +337,12 @@ func (c *Client) JobDetail(ctx context.Context, jobID string) (JobDetail, error)
 	if len(rows) == 0 {
 		return JobDetail{}, errors.New("Slurm 中未找到该作业")
 	}
-	cols := splitRow(rows[0], 19)
+	cols := splitRow(rows[0], 20)
 	return JobDetail{
-		ID: cols[0], Name: cols[1], User: cols[2], Partition: cols[3], QOS: cols[4],
-		State: cols[5], Nodes: cols[6], CPUs: cols[7], ReqCPUs: cols[8], ReqMem: cols[9],
-		Requested: cols[10], Submit: cols[11], Start: cols[12], End: cols[13],
-		Elapsed: cols[14], NodeList: cols[15], WorkDir: cols[16], StdOut: cols[17], StdErr: cols[18],
+		ID: cols[0], Name: cols[1], User: cols[2], Account: emptyNull(cols[3]), Partition: cols[4], QOS: cols[5],
+		State: cols[6], Nodes: cols[7], CPUs: cols[8], ReqCPUs: cols[9], ReqMem: cols[10],
+		Requested: cols[11], Submit: cols[12], Start: cols[13], End: cols[14],
+		Elapsed: cols[15], NodeList: cols[16], WorkDir: cols[17], StdOut: cols[18], StdErr: cols[19],
 	}, nil
 }
 
@@ -516,4 +518,12 @@ func splitRow(row string, width int) []string {
 		}
 	}
 	return out
+}
+
+func emptyNull(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "(null)" || value == "null" || value == "None" {
+		return ""
+	}
+	return value
 }

@@ -33,6 +33,9 @@ type SyncedJob struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	User      string `json:"user"`
+	Account   string `json:"account"`
+	ProjectID int64  `json:"projectId,omitempty"`
+	Project   string `json:"project,omitempty"`
 	Partition string `json:"partition"`
 	State     string `json:"state"`
 	Nodes     string `json:"nodes"`
@@ -52,6 +55,8 @@ type JobQuery struct {
 	Status    string
 	Keyword   string
 	Username  string
+	Account   string
+	ProjectID int64
 	Group     string
 	Partition string
 	UnitIDs   []string
@@ -123,6 +128,7 @@ CREATE TABLE IF NOT EXISTS slurm_jobs (
   job_id TEXT PRIMARY KEY,
   name TEXT NOT NULL DEFAULT '',
   user_name TEXT NOT NULL DEFAULT '',
+  account TEXT NOT NULL DEFAULT '',
   partition TEXT NOT NULL DEFAULT '',
   state TEXT NOT NULL DEFAULT '',
   node_count INTEGER NOT NULL DEFAULT 0,
@@ -138,8 +144,10 @@ CREATE TABLE IF NOT EXISTS slurm_jobs (
   synced_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE slurm_jobs ADD COLUMN IF NOT EXISTS account TEXT NOT NULL DEFAULT '';
 CREATE INDEX IF NOT EXISTS idx_slurm_jobs_synced_at ON slurm_jobs (synced_at DESC);
 CREATE INDEX IF NOT EXISTS idx_slurm_jobs_state ON slurm_jobs (state);
+CREATE INDEX IF NOT EXISTS idx_slurm_jobs_account ON slurm_jobs (account);
 CREATE TABLE IF NOT EXISTS dashboard_resource_samples (
   id BIGSERIAL PRIMARY KEY,
   sampled_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -632,7 +640,7 @@ func (s *Services) syncSlurmJobsSince(ctx context.Context, historySince string) 
 	for _, job := range history {
 		raw, _ := json.Marshal(job)
 		if err := s.upsertJob(ctx, SyncedJob{
-			ID: job.ID, Name: job.Name, User: job.User, Partition: job.Partition, State: job.State,
+			ID: job.ID, Name: job.Name, User: job.User, Account: job.Account, Partition: job.Partition, State: job.State,
 			Nodes: job.Nodes, CPUs: job.CPUs, GPUs: "0", Time: job.Elapsed,
 			Submit: job.Submit, NodeList: job.NodeList, Source: "slurmdbd",
 		}, string(raw), job.Start, job.End); err != nil {
@@ -642,7 +650,7 @@ func (s *Services) syncSlurmJobsSince(ctx context.Context, historySince string) 
 	for _, job := range current {
 		raw, _ := json.Marshal(job)
 		if err := s.upsertJob(ctx, SyncedJob{
-			ID: job.ID, Name: job.Name, User: job.User, Partition: job.Partition, State: job.State,
+			ID: job.ID, Name: job.Name, User: job.User, Account: job.Account, Partition: job.Partition, State: job.State,
 			Nodes: job.Nodes, CPUs: job.CPUs, GPUs: job.GPUs, Time: job.Time,
 			Submit: job.Submit, NodeList: job.NodeList, Source: "squeue",
 		}, string(raw), "", ""); err != nil {
@@ -672,7 +680,7 @@ func (s *Services) SyncCurrentSlurmJobs(ctx context.Context) error {
 	for _, job := range current {
 		raw, _ := json.Marshal(job)
 		if err := s.upsertJob(ctx, SyncedJob{
-			ID: job.ID, Name: job.Name, User: job.User, Partition: job.Partition, State: job.State,
+			ID: job.ID, Name: job.Name, User: job.User, Account: job.Account, Partition: job.Partition, State: job.State,
 			Nodes: job.Nodes, CPUs: job.CPUs, GPUs: job.GPUs, Time: job.Time,
 			Submit: job.Submit, NodeList: job.NodeList, Source: "squeue",
 		}, string(raw), "", ""); err != nil {
@@ -724,12 +732,13 @@ func (s *Services) deleteStaleQueueSnapshots(ctx context.Context, current []slur
 func (s *Services) upsertJob(ctx context.Context, job SyncedJob, raw, start, end string) error {
 	_, err := s.DB.ExecContext(ctx, `
 INSERT INTO slurm_jobs (
-  job_id, name, user_name, partition, state, node_count, cpu_count, gpu_count,
+  job_id, name, user_name, account, partition, state, node_count, cpu_count, gpu_count,
   runtime, node_list, submit_time, start_time, end_time, source, raw, synced_at, updated_at
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb,now(),now())
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,now(),now())
 ON CONFLICT (job_id) DO UPDATE SET
   name = EXCLUDED.name,
   user_name = EXCLUDED.user_name,
+  account = EXCLUDED.account,
   partition = EXCLUDED.partition,
   state = EXCLUDED.state,
   node_count = EXCLUDED.node_count,
@@ -744,7 +753,7 @@ ON CONFLICT (job_id) DO UPDATE SET
   raw = EXCLUDED.raw,
   synced_at = now(),
   updated_at = now()
-`, job.ID, job.Name, job.User, job.Partition, job.State, atoiDefault(job.Nodes), atoiDefault(job.CPUs), atoiDefault(job.GPUs),
+`, job.ID, job.Name, job.User, job.Account, job.Partition, job.State, atoiDefault(job.Nodes), atoiDefault(job.CPUs), atoiDefault(job.GPUs),
 		job.Time, job.NodeList, job.Submit, start, end, job.Source, raw)
 	return err
 }
@@ -762,10 +771,11 @@ WHERE job_id = $1`, jobID, state)
 
 func (s *Services) SyncedSlurmJobs(ctx context.Context) ([]SyncedJob, error) {
 	rows, err := s.DB.QueryContext(ctx, `
-SELECT job_id, name, user_name, partition, state, node_count, cpu_count, gpu_count,
-       runtime, node_list, submit_time, source, synced_at
-FROM slurm_jobs
-ORDER BY synced_at DESC, NULLIF(regexp_replace(job_id, '\D.*$', ''), '')::bigint DESC NULLS LAST, job_id DESC
+SELECT sj.job_id, sj.name, sj.user_name, sj.account, COALESCE(p.id,0), COALESCE(p.name,''), sj.partition, sj.state, sj.node_count, sj.cpu_count, sj.gpu_count,
+       sj.runtime, sj.node_list, sj.submit_time, sj.source, sj.synced_at
+FROM slurm_jobs sj
+LEFT JOIN projects p ON p.slurm_account=sj.account AND sj.account <> ''
+ORDER BY sj.synced_at DESC, NULLIF(regexp_replace(sj.job_id, '\D.*$', ''), '')::bigint DESC NULLS LAST, sj.job_id DESC
 LIMIT 500`)
 	if err != nil {
 		return nil, err
@@ -777,7 +787,7 @@ LIMIT 500`)
 		var job SyncedJob
 		var nodes, cpus, gpus int
 		var synced time.Time
-		if err := rows.Scan(&job.ID, &job.Name, &job.User, &job.Partition, &job.State, &nodes, &cpus, &gpus, &job.Time, &job.NodeList, &job.Submit, &job.Source, &synced); err != nil {
+		if err := rows.Scan(&job.ID, &job.Name, &job.User, &job.Account, &job.ProjectID, &job.Project, &job.Partition, &job.State, &nodes, &cpus, &gpus, &job.Time, &job.NodeList, &job.Submit, &job.Source, &synced); err != nil {
 			return nil, err
 		}
 		job.Nodes = strconv.Itoa(nodes)
@@ -801,6 +811,7 @@ func normalizeJobQuery(query JobQuery) JobQuery {
 	}
 	query.Keyword = strings.TrimSpace(query.Keyword)
 	query.Username = strings.TrimSpace(query.Username)
+	query.Account = strings.TrimSpace(query.Account)
 	query.Group = strings.TrimSpace(query.Group)
 	query.Partition = strings.TrimSpace(query.Partition)
 	switch strings.ToUpper(strings.TrimSpace(query.Status)) {
@@ -840,7 +851,7 @@ func buildJobWhere(query JobQuery) (string, []any) {
 		args = append(args, query.UnitIDs)
 		orgWhere = append(orgWhere, fmt.Sprintf(`EXISTS(
 SELECT 1 FROM platform_users scope_user
-WHERE scope_user.username=slurm_jobs.user_name
+WHERE scope_user.username=sj.user_name
 AND scope_user.unit_id::text = ANY($%d::text[])
 )`, len(args)))
 	}
@@ -848,7 +859,7 @@ AND scope_user.unit_id::text = ANY($%d::text[])
 		args = append(args, query.TeamIDs)
 		orgWhere = append(orgWhere, fmt.Sprintf(`EXISTS(
 SELECT 1 FROM platform_users scope_user
-WHERE scope_user.username=slurm_jobs.user_name
+WHERE scope_user.username=sj.user_name
 AND scope_user.team_id::text = ANY($%d::text[])
 )`, len(args)))
 	}
@@ -857,11 +868,21 @@ AND scope_user.team_id::text = ANY($%d::text[])
 	}
 	if query.Username != "" {
 		args = append(args, query.Username)
-		where = append(where, fmt.Sprintf("user_name = $%d", len(args)))
+		where = append(where, fmt.Sprintf("sj.user_name = $%d", len(args)))
+	}
+	if query.Account != "" {
+		args = append(args, query.Account)
+		where = append(where, fmt.Sprintf("sj.account = $%d", len(args)))
+	}
+	if query.ProjectID > 0 {
+		args = append(args, query.ProjectID)
+		where = append(where, fmt.Sprintf(`sj.account = (
+			SELECT slurm_account FROM projects WHERE id = $%d AND slurm_account <> ''
+		)`, len(args)))
 	}
 	if query.Partition != "" {
 		args = append(args, query.Partition)
-		where = append(where, fmt.Sprintf("partition = $%d", len(args)))
+		where = append(where, fmt.Sprintf("sj.partition = $%d", len(args)))
 	}
 	if query.Group != "" {
 		args = append(args, query.Group)
@@ -870,27 +891,27 @@ AND scope_user.team_id::text = ANY($%d::text[])
 			SELECT 1
 			FROM platform_users pu
 			JOIN teams t ON t.id = pu.team_id
-			WHERE pu.username = slurm_jobs.user_name
+			WHERE pu.username = sj.user_name
 			  AND (t.group_name = $%d OR t.name = $%d)
 		)`, n, n))
 	}
 	if query.Keyword != "" {
 		args = append(args, "%"+query.Keyword+"%")
 		n := len(args)
-		where = append(where, fmt.Sprintf(`(job_id ILIKE $%d OR name ILIKE $%d OR user_name ILIKE $%d OR partition ILIKE $%d OR node_list ILIKE $%d)`, n, n, n, n, n))
+		where = append(where, fmt.Sprintf(`(sj.job_id ILIKE $%d OR sj.name ILIKE $%d OR sj.user_name ILIKE $%d OR sj.account ILIKE $%d OR sj.partition ILIKE $%d OR sj.node_list ILIKE $%d)`, n, n, n, n, n, n))
 	}
 	if query.Status != "" {
 		switch query.Status {
 		case "RUNNING":
-			where = append(where, `(upper(state) IN ('RUNNING','R') OR upper(state) LIKE 'RUNNING%')`)
+			where = append(where, `(upper(sj.state) IN ('RUNNING','R') OR upper(sj.state) LIKE 'RUNNING%')`)
 		case "PENDING":
-			where = append(where, `(upper(state) IN ('PENDING','PD') OR upper(state) LIKE 'PENDING%')`)
+			where = append(where, `(upper(sj.state) IN ('PENDING','PD') OR upper(sj.state) LIKE 'PENDING%')`)
 		case "COMPLETED":
-			where = append(where, `(upper(state) IN ('COMPLETED','CD','COMPLETING','CG') OR upper(state) LIKE 'COMPLETED%')`)
+			where = append(where, `(upper(sj.state) IN ('COMPLETED','CD','COMPLETING','CG') OR upper(sj.state) LIKE 'COMPLETED%')`)
 		case "SUSPENDED":
-			where = append(where, `(upper(state) IN ('SUSPENDED','S') OR upper(state) LIKE 'SUSPENDED%')`)
+			where = append(where, `(upper(sj.state) IN ('SUSPENDED','S') OR upper(sj.state) LIKE 'SUSPENDED%')`)
 		case "FAILED":
-			where = append(where, `(upper(state) IN ('FAILED','F','CANCELLED','CA','TIMEOUT','TO') OR upper(state) LIKE 'FAILED%' OR upper(state) LIKE 'CANCELLED%' OR upper(state) LIKE 'TIMEOUT%')`)
+			where = append(where, `(upper(sj.state) IN ('FAILED','F','CANCELLED','CA','TIMEOUT','TO') OR upper(sj.state) LIKE 'FAILED%' OR upper(sj.state) LIKE 'CANCELLED%' OR upper(sj.state) LIKE 'TIMEOUT%')`)
 		}
 	}
 	return strings.Join(where, " AND "), args
@@ -900,7 +921,7 @@ func (s *Services) QuerySlurmJobs(ctx context.Context, query JobQuery) (JobPage,
 	query = normalizeJobQuery(query)
 	whereSQL, args := buildJobWhere(query)
 	page := JobPage{Items: []SyncedJob{}, Page: query.Page, PageSize: query.PageSize, Source: "postgres-slurm-sync"}
-	if err := s.DB.QueryRowContext(ctx, `SELECT count(*) FROM slurm_jobs WHERE `+whereSQL, args...).Scan(&page.Total); err != nil {
+	if err := s.DB.QueryRowContext(ctx, `SELECT count(*) FROM slurm_jobs sj WHERE `+whereSQL, args...).Scan(&page.Total); err != nil {
 		return page, err
 	}
 	page.TotalPages = int(math.Ceil(float64(page.Total) / float64(query.PageSize)))
@@ -914,11 +935,12 @@ func (s *Services) QuerySlurmJobs(ctx context.Context, query JobQuery) (JobPage,
 	args = append(args, query.PageSize, query.Offset)
 	limitArg, offsetArg := len(args)-1, len(args)
 	rows, err := s.DB.QueryContext(ctx, fmt.Sprintf(`
-SELECT job_id, name, user_name, partition, state, node_count, cpu_count, gpu_count,
-       runtime, node_list, submit_time, source, synced_at
-FROM slurm_jobs
+SELECT sj.job_id, sj.name, sj.user_name, sj.account, COALESCE(p.id,0), COALESCE(p.name,''), sj.partition, sj.state, sj.node_count, sj.cpu_count, sj.gpu_count,
+       sj.runtime, sj.node_list, sj.submit_time, sj.source, sj.synced_at
+FROM slurm_jobs sj
+LEFT JOIN projects p ON p.slurm_account=sj.account AND sj.account <> ''
 WHERE %s
-ORDER BY NULLIF(regexp_replace(job_id, '\D.*$', ''), '')::bigint DESC NULLS LAST, job_id DESC
+ORDER BY NULLIF(regexp_replace(sj.job_id, '\D.*$', ''), '')::bigint DESC NULLS LAST, sj.job_id DESC
 LIMIT $%d OFFSET $%d`, whereSQL, limitArg, offsetArg), args...)
 	if err != nil {
 		return page, err
@@ -928,7 +950,7 @@ LIMIT $%d OFFSET $%d`, whereSQL, limitArg, offsetArg), args...)
 		var job SyncedJob
 		var nodes, cpus, gpus int
 		var synced time.Time
-		if err := rows.Scan(&job.ID, &job.Name, &job.User, &job.Partition, &job.State, &nodes, &cpus, &gpus, &job.Time, &job.NodeList, &job.Submit, &job.Source, &synced); err != nil {
+		if err := rows.Scan(&job.ID, &job.Name, &job.User, &job.Account, &job.ProjectID, &job.Project, &job.Partition, &job.State, &nodes, &cpus, &gpus, &job.Time, &job.NodeList, &job.Submit, &job.Source, &synced); err != nil {
 			return page, err
 		}
 		job.Nodes, job.CPUs, job.GPUs = strconv.Itoa(nodes), strconv.Itoa(cpus), strconv.Itoa(gpus)

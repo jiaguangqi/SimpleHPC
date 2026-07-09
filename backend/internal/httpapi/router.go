@@ -55,6 +55,21 @@ func NewRouter(cfg config.Config, services *service.Services) http.Handler {
 		v1.GET("/overview", api.overview)
 		v1.GET("/dashboard", api.dashboard)
 		v1.GET("/dashboard/queue-job-trends", api.dashboardQueueJobTrends)
+		v1.GET("/projects", api.listProjects)
+		v1.POST("/projects", api.createProject)
+		v1.GET("/projects/:id", api.getProject)
+		v1.PUT("/projects/:id", api.updateProject)
+		v1.DELETE("/projects/:id", api.deleteProject)
+		v1.POST("/projects/:id/slurm-sync", api.syncProjectSlurm)
+		v1.POST("/projects/:id/members", api.upsertProjectMember)
+		v1.POST("/projects/:id/members/:username/default", api.setDefaultProjectMember)
+		v1.DELETE("/projects/:id/members/:username", api.deleteProjectMember)
+		v1.POST("/projects/:id/tasks", api.upsertProjectTask)
+		v1.DELETE("/projects/:id/tasks/:taskId", api.deleteProjectTask)
+		v1.POST("/projects/:id/directories", api.upsertProjectDirectory)
+		v1.DELETE("/projects/:id/directories/:directoryId", api.deleteProjectDirectory)
+		v1.POST("/projects/:id/job-links", api.upsertProjectJobLink)
+		v1.DELETE("/projects/:id/job-links/:linkId", api.deleteProjectJobLink)
 		v1.GET("/audit/logs", api.listAuditLogs)
 		v1.GET("/logs/auth-events", api.listAuthEvents)
 		v1.GET("/logs/system", api.listSystemLogs)
@@ -223,6 +238,7 @@ func NewRouter(cfg config.Config, services *service.Services) http.Handler {
 	router.Match([]string{http.MethodGet, http.MethodHead}, "/users.html", htmlFileHandler(filepath.Join(cfg.FrontendDir, "users.html")))
 	router.Match([]string{http.MethodGet, http.MethodHead}, "/resources.html", htmlFileHandler(filepath.Join(cfg.FrontendDir, "resources.html")))
 	router.Match([]string{http.MethodGet, http.MethodHead}, "/data.html", htmlFileHandler(filepath.Join(cfg.FrontendDir, "data.html")))
+	router.Match([]string{http.MethodGet, http.MethodHead}, "/projects.html", htmlFileHandler(filepath.Join(cfg.FrontendDir, "projects.html")))
 	router.Match([]string{http.MethodGet, http.MethodHead}, "/jobs.html", htmlFileHandler(filepath.Join(cfg.FrontendDir, "jobs.html")))
 	router.Match([]string{http.MethodGet, http.MethodHead}, "/monitoring.html", htmlFileHandler(filepath.Join(cfg.FrontendDir, "monitoring.html")))
 	router.Match([]string{http.MethodGet, http.MethodHead}, "/settings.html", htmlFileHandler(filepath.Join(cfg.FrontendDir, "settings.html")))
@@ -1156,6 +1172,8 @@ func (api *API) slurmJobs(c *gin.Context) {
 		Status:    c.Query("status"),
 		Keyword:   c.Query("keyword"),
 		Username:  c.Query("user"),
+		Account:   c.Query("account"),
+		ProjectID: int64(queryInt(c, "projectId", 0)),
 		Group:     c.Query("group"),
 		Partition: c.Query("partition"),
 	}
@@ -1186,6 +1204,9 @@ func (api *API) slurmJobs(c *gin.Context) {
 			continue
 		}
 		if query.Partition != "" && job.Partition != query.Partition {
+			continue
+		}
+		if query.Account != "" && job.Account != query.Account {
 			continue
 		}
 		filtered = append(filtered, job)

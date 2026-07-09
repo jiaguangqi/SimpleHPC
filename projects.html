@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="assets/logos/simplehpc-favicon.png">
+<title>SimpleHPC — 项目中心</title>
+<link rel="stylesheet" href="css/theme.css?v=20260709projects1">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand"><img src="assets/logos/simplehpc-navbar-horizontal.png" alt="SimpleHPC" class="brand-logo"></div>
+    <ul class="nav"></ul>
+    <div class="sidebar-user"><div class="avatar">管</div><div><div style="font-size:13px;font-weight:600;">管理员</div><div style="font-size:11px;color:var(--muted);">cluster_admin</div></div></div>
+  </aside>
+  <header class="header">
+    <h1 class="header-title">项目中心</h1>
+    <div class="header-actions">
+      <input class="search-field" placeholder="搜索项目、负责人、标签..." id="globalSearch">
+      <button class="btn-icon" type="button" id="projectRefreshIcon" aria-label="刷新项目">⟳</button>
+      <div class="avatar" data-dropdown='{"html":"&lt;button class=&quot;_shpc-dropdown-item&quot; onclick=&quot;App.openProfileModal()&quot;&gt;个人资料&lt;/button&gt;&lt;button class=&quot;_shpc-dropdown-item&quot; onclick=&quot;App.openPasswordDrawer()&quot;&gt;修改密码&lt;/button&gt;&lt;div class=&quot;_shpc-dropdown-divider&quot;&gt;&lt;/div&gt;&lt;button class=&quot;_shpc-dropdown-item&quot; style=&quot;color:var(--danger)&quot; onclick=&quot;App.logout()&quot;&gt;退出登录&lt;/button&gt;","width":"160px","placement":"bottom-end"}'>管</div>
+    </div>
+  </header>
+  <main class="main project-page">
+    <section class="project-hero">
+      <div>
+        <span class="project-eyebrow">PROJECT COMPUTING WORKSPACE</span>
+        <h2>项目中心</h2>
+        <p>以项目/课题为主线组织成员、数据空间、计算任务、Slurm 作业和 License 资源，让科研计算从“单次提交”升级为可协作、可追踪、可复用的项目工作台。</p>
+      </div>
+      <div class="project-hero-actions">
+        <button class="btn btn-primary" type="button" id="projectCreateBtn">新建项目</button>
+        <button class="btn btn-ghost" type="button" id="projectRefreshBtn">刷新</button>
+      </div>
+    </section>
+
+    <section id="projectKpis" class="project-kpi-grid"></section>
+
+    <section class="project-toolbar glass-card">
+      <input id="projectSearch" class="search-field" placeholder="搜索项目名称、编码、负责人、说明...">
+      <select id="projectStatusFilter" class="select-field">
+        <option value="">全部状态</option>
+        <option value="planning">规划中</option>
+        <option value="active">进行中</option>
+        <option value="paused">已暂停</option>
+        <option value="completed">已完成</option>
+        <option value="archived">已归档</option>
+      </select>
+      <button class="btn btn-ghost" type="button" id="projectResetFilterBtn">重置筛选</button>
+    </section>
+
+    <section id="projectError" class="project-error" hidden></section>
+
+    <section class="project-workbench">
+      <aside class="project-list-panel">
+        <div class="project-panel-head compact">
+          <div>
+            <h3>我的项目</h3>
+            <p>点击项目查看成员、任务、数据空间和作业。</p>
+          </div>
+        </div>
+        <div id="projectList" class="project-list"></div>
+      </aside>
+
+      <section class="project-detail-panel">
+        <div id="projectDetail" class="project-detail"></div>
+      </section>
+    </section>
+  </main>
+</div>
+<script src="js/projects.js?v=20260709projects1"></script>
+<script src="js/app.js?v=20260707session"></script>
+</body>
+</html>

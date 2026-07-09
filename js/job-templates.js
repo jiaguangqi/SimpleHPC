@@ -2,7 +2,7 @@
   'use strict';
   const token = localStorage.getItem('simplehpc_token') || '';
   const user = JSON.parse(localStorage.getItem('simplehpc_user') || '{}');
-  const state = { items: [], canManage: false, view: 'library', layout: 'grid', selected: new Set(), fields: [], selectedField: -1, designerTab: 'ui' };
+  const state = { items: [], canManage: false, view: 'library', layout: 'grid', selected: new Set(), fields: [], selectedField: -1, designerTab: 'ui', projects: [] };
   const kinds = { batch: '非交互式作业', novnc: 'noVNC 桌面', webapp: 'Web 应用转发' };
   const fieldTypes = {
     section:'分组标题', divider:'分隔线', hint:'提示文字',
@@ -57,6 +57,10 @@
       .slice(0, 128);
     return value || `job-template-${id}`;
   }
+  function selectedProjectFromURL() {
+    const params = new URLSearchParams(location.search);
+    return { projectId: params.get('projectId') || '', account: params.get('account') || '' };
+  }
   async function exportTemplate(id) {
     const item = await api('/job-templates/' + id);
     const base = 'simplehpc-' + safeFileName(item.name);
@@ -74,8 +78,12 @@
   }
   async function load() {
     try {
-      const data = await api('/job-templates');
+      const [data, projectData] = await Promise.all([
+        api('/job-templates'),
+        api('/projects').catch(() => ({items: []}))
+      ]);
       state.items = data.items || []; state.canManage = !!data.canManage;
+      state.projects = projectData.items || [];
       $('#managerActions').hidden = !state.canManage || state.view !== 'manage';
       document.querySelectorAll('.manager-only').forEach(el => el.hidden = !state.canManage);
       const categories = [...new Set(state.items.map(item => item.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-CN'));
@@ -131,7 +139,21 @@
     }
     $('#batchExportTemplates').disabled = state.selected.size === 0;
   }
-  function templateParameterForm(item, username) {
+  function projectAccountSelect(projects) {
+    const usable = (projects || []).filter(project => project.slurmAccount);
+    const sorted = usable.slice().sort((a, b) => (b.currentUserDefaultProject ? 1 : 0) - (a.currentUserDefaultProject ? 1 : 0) || String(a.name).localeCompare(String(b.name), 'zh-CN'));
+    const preferred = selectedProjectFromURL();
+    if (!sorted.length) {
+      return `<label class="wide">所属项目<select data-core="account" data-project-select disabled><option value="">暂无可用项目</option></select><small>请先在项目中心加入项目，或联系项目负责人授权。</small></label>`;
+    }
+    return `<label class="wide">所属项目<select data-core="account" data-project-select>
+      ${sorted.map(project => {
+        const matched = preferred.projectId ? String(project.id) === String(preferred.projectId) : (preferred.account ? String(project.slurmAccount) === preferred.account : project.currentUserDefaultProject);
+        return `<option value="${esc(project.slurmAccount)}" data-project-id="${esc(project.id)}" ${matched ? 'selected' : ''}>${esc(project.name)}${project.currentUserDefaultProject ? '（默认）' : ''} · ${esc(project.slurmAccount)}</option>`;
+      }).join('')}
+    </select><small>系统会把所选项目写入 Slurm 脚本的 --account。</small></label>`;
+  }
+  function templateParameterForm(item, username, projects) {
     const fields = (item.formSchema || []).map(submitField).join('');
     const walltime = item.kind === 'novnc'
       ? '<label>预计运行时间<input data-core="walltime" value="24:00:00" pattern="[0-9]+:[0-5][0-9]:[0-5][0-9]"><small>默认 24 小时，格式：小时:分钟:秒</small></label>'
@@ -139,6 +161,7 @@
     return `<div class="tpl-use-heading"><div><h3>作业参数</h3><p>按本次任务需要调整资源、输入文件和工作目录。</p></div></div>
       <div class="tpl-submit-grid">
         <label>作业名称<input data-core="jobName" value="${esc(safeJobName(item.name, item.id))}" pattern="[A-Za-z0-9._-]+"></label>
+        ${projectAccountSelect(projects || [])}
         <label>分区<input data-core="partition" value="debug"></label>
         <label>节点数<input data-core="nodes" type="number" min="1" value="1"></label>
         <label>CPU 核数<input data-core="cpus" type="number" min="1" value="1"></label>
@@ -159,7 +182,7 @@
           <div><span>${esc(kinds[item.kind] || item.kind)}</span><b>${esc(item.name)}</b><p>${esc(item.description || '暂无模板说明')}</p></div>
           <div><span class="pill ${item.status === 'published' ? 'pill-success' : 'pill-warn'}">${item.status === 'published' ? '已发布' : '草稿'}</span><small>v${esc(item.version)}</small></div>
         </header>
-        <section class="tpl-template-preview-form">${templateParameterForm(item, user.username || 'user')}</section>
+        <section class="tpl-template-preview-form">${templateParameterForm(item, user.username || 'user', state.projects)}</section>
       </div>`
     });
     modal.el.classList.add('tpl-template-preview-modal');
@@ -414,7 +437,11 @@
     return `<label>${esc(field.label)}${field.required?' *':''}${input}${field.help?`<small>${esc(field.help)}</small>`:''}</label>`;
   }
   async function useTemplate(id) {
-    const item=await api('/job-templates/'+id);
+    const [item, projectData]=await Promise.all([
+      api('/job-templates/'+id),
+      api('/projects').catch(() => ({items: state.projects || []}))
+    ]);
+    state.projects = projectData.items || state.projects || [];
     const username=user.username||'user';
     const modal=App.modal({
       title:'使用模板：'+item.name,
@@ -422,7 +449,7 @@
       confirmText:'提交作业',
       errorPrefix:'提交失败',
       content:`<div class="tpl-use-layout">
-        <section class="tpl-use-form">${templateParameterForm(item, username)}</section>
+        <section class="tpl-use-form">${templateParameterForm(item, username, state.projects)}</section>
         <section class="tpl-use-preview"><div class="tpl-use-preview-head"><div><h3>预览最终脚本</h3><p id="previewState">根据左侧当前参数生成</p></div><button type="button" class="btn btn-ghost" id="previewScript">刷新脚本内容</button></div><pre id="scriptPreview">正在生成脚本...</pre></section>
       </div>`,
       onSubmit:async()=>{
@@ -442,7 +469,7 @@
     modal.el.querySelectorAll('[data-core],[data-field]').forEach(control=>control.addEventListener('input',()=>{$('#previewState',modal.el).textContent='参数已变化，请刷新脚本';}));
     await refresh();
   }
-  function collect(root){const values={};root.querySelectorAll('[data-core]').forEach(x=>values[x.dataset.core]=x.type==='number'?Number(x.value):x.value);root.querySelectorAll('[data-field]').forEach(x=>{if(x.type==='checkbox')values[x.dataset.field]=x.checked;else if(x.multiple)values[x.dataset.field]=Array.from(x.selectedOptions).map(o=>o.value).join(',');else values[x.dataset.field]=x.type==='number'?Number(x.value):x.value;});return values;}
+  function collect(root){const values={};root.querySelectorAll('[data-core]').forEach(x=>{values[x.dataset.core]=x.type==='number'?Number(x.value):x.value;if(x.matches('[data-project-select]')){const option=x.selectedOptions&&x.selectedOptions[0];values.projectId=option&&option.dataset.projectId?Number(option.dataset.projectId):0;}});root.querySelectorAll('[data-field]').forEach(x=>{if(x.type==='checkbox')values[x.dataset.field]=x.checked;else if(x.multiple)values[x.dataset.field]=Array.from(x.selectedOptions).map(o=>o.value).join(',');else values[x.dataset.field]=x.type==='number'?Number(x.value):x.value;});return values;}
   async function request(id){const modal=App.modal({title:'申请使用模板',content:'<label class="tpl-block-label">申请理由<textarea id="requestReason" placeholder="请说明研究场景和使用目的"></textarea></label>',onSubmit:async()=>{await api('/job-templates/'+id+'/access-requests',{method:'POST',body:JSON.stringify({reason:$('#requestReason',modal.el).value})});App.toast('授权申请已提交','success');load();}});}
   async function grantTemplate(id) {
     const [item, usersData, teamsData] = await Promise.all([

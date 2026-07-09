@@ -66,10 +66,10 @@ func TestBuildJobWhereIncludesAdministratorFilters(t *testing.T) {
 		Partition: "debug",
 	})
 
-	if !strings.Contains(where, "user_name = $1") {
+	if !strings.Contains(where, "sj.user_name = $1") {
 		t.Fatalf("where does not filter exact user: %s", where)
 	}
-	if !strings.Contains(where, "partition = $2") {
+	if !strings.Contains(where, "sj.partition = $2") {
 		t.Fatalf("where does not filter exact partition: %s", where)
 	}
 	if !strings.Contains(where, "platform_users") || !strings.Contains(where, "teams") {
