@@ -96,6 +96,29 @@ func (c *Client) EnsureUserAccountAssociation(ctx context.Context, account strin
 	return nil
 }
 
+func (c *Client) RemoveUserAccountAssociation(ctx context.Context, account string, username string) error {
+	account = strings.TrimSpace(account)
+	username = strings.TrimSpace(username)
+	if err := validateSlurmAccountName(account, "Slurm Account"); err != nil {
+		return err
+	}
+	if !regexpLinuxUser.MatchString(username) {
+		return errors.New("用户账号格式不合法，无法撤销 Slurm Account 关联")
+	}
+	if _, err := c.run(ctx, "sacctmgr", "-i", "delete", "user", "name="+username, "account="+account); err != nil && !isNothingDeleted(err) {
+		return fmt.Errorf("撤销用户 %s 的 Slurm Account 关联失败: %w", username, err)
+	}
+	return nil
+}
+
+func isNothingDeleted(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "nothing deleted") || strings.Contains(message, "nothing removed")
+}
+
 func cleanSlurmTextArg(value string) string {
 	value = strings.TrimSpace(value)
 	value = strings.ReplaceAll(value, "\n", " ")

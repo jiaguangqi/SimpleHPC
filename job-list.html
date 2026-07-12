@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" type="image/png" href="assets/logos/simplehpc-favicon.png"><title>simpleHPC — 作业列表</title><link rel="stylesheet" href="css/theme.css?v=20260705brandnav1"></head>
+<link rel="icon" type="image/png" href="assets/logos/simplehpc-favicon.png"><title>simpleHPC — 作业列表</title><link rel="stylesheet" href="css/theme.css?v=20260711ui-consistency1"></head>
 <body>
 <div class="layout">
   <aside class="sidebar">
@@ -287,7 +287,17 @@ function changeJobPageSize(size){
 }
 function resetAndRenderJobList(){
   jobCurrentPage=1;
+  persistJobListFilters();
   loadJobListFromApi();
+}
+function persistJobListFilters(){
+  var params=new URLSearchParams(location.search);
+  var projectId=document.getElementById('jobProjectFilter')?.value || '';
+  var status=document.getElementById('jobFilter')?.value || '';
+  if(projectId) params.set('projectId',projectId); else params.delete('projectId');
+  if(status) params.set('status',status); else params.delete('status');
+  var query=params.toString();
+  history.replaceState(null,'',location.pathname+(query?'?'+query:'')+location.hash);
 }
 function refreshJobList(){
   App.loading.show('正在同步 Slurm 作业状态...');
@@ -612,6 +622,10 @@ async function loadProjectJobFilters(){
   }
 }
 document.addEventListener('DOMContentLoaded',function(){
+  var initialParams=new URLSearchParams(location.search);
+  var initialStatus=initialParams.get('status') || '';
+  var statusFilter=document.getElementById('jobFilter');
+  if(statusFilter && Array.from(statusFilter.options).some(function(option){return option.value===initialStatus})) statusFilter.value=initialStatus;
   document.getElementById('jobFilter')?.addEventListener('change',resetAndRenderJobList);
   document.getElementById('jobProjectFilter')?.addEventListener('change',resetAndRenderJobList);
   ['jobUserFilter','jobGroupFilter','jobPartitionFilter'].forEach(function(id){

@@ -32,6 +32,21 @@ func TestNormalizeJobQuery(t *testing.T) {
 	}
 }
 
+func TestParseSlurmRuntimeSeconds(t *testing.T) {
+	tests := map[string]int64{
+		"00:10":      10,
+		"01:02:03":   3723,
+		"2-01:02:03": 176523,
+		"Unknown":    0,
+		"invalid":    0,
+	}
+	for value, want := range tests {
+		if got := parseSlurmRuntimeSeconds(value); got != want {
+			t.Fatalf("parseSlurmRuntimeSeconds(%q) = %d, want %d", value, got, want)
+		}
+	}
+}
+
 func TestScopeJobQueryLimitsRegularUserToOwnJobs(t *testing.T) {
 	query := ScopeJobQuery(AuthUser{Username: "user001", Type: "user"}, JobQuery{
 		Username:  "root",

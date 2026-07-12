@@ -1178,6 +1178,15 @@ func (api *API) slurmJobs(c *gin.Context) {
 		Partition: c.Query("partition"),
 	}
 	query := api.scopeJobQuery(c, user, baseQuery)
+	if baseQuery.ProjectID > 0 {
+		account, err := api.services.ProjectJobAccount(c.Request.Context(), baseQuery.ProjectID, user.Username, api.projectCanManageAll(c, user))
+		if err != nil {
+			writeProjectError(c, err)
+			return
+		}
+		query = baseQuery
+		query.Account = account
+	}
 	if api.services.DB != nil && c.Query("live") != "1" {
 		if c.Query("refresh") == "1" {
 			if err := api.services.SyncRecentSlurmJobs(c.Request.Context()); err != nil {
@@ -1220,7 +1229,7 @@ func (api *API) slurmJobs(c *gin.Context) {
 }
 
 func (api *API) slurmJobDetail(c *gin.Context) {
-	_, detail, ok := api.authorizedSlurmJob(c)
+	_, detail, ok := api.authorizedSlurmJob(c, false)
 	if !ok {
 		return
 	}
@@ -1229,7 +1238,7 @@ func (api *API) slurmJobDetail(c *gin.Context) {
 }
 
 func (api *API) slurmJobOutput(c *gin.Context) {
-	if _, _, ok := api.authorizedSlurmJob(c); !ok {
+	if _, _, ok := api.authorizedSlurmJob(c, false); !ok {
 		return
 	}
 	output, err := api.services.Slurm.JobOutput(c.Request.Context(), c.Param("id"), c.Query("stream"))
@@ -1240,7 +1249,7 @@ func (api *API) slurmJobOutput(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
-func (api *API) authorizedSlurmJob(c *gin.Context) (service.AuthUser, slurmintegration.JobDetail, bool) {
+func (api *API) authorizedSlurmJob(c *gin.Context, requireProjectManage bool) (service.AuthUser, slurmintegration.JobDetail, bool) {
 	user, ok := api.currentUser(c)
 	if !ok {
 		return user, slurmintegration.JobDetail{}, false
@@ -1250,7 +1259,12 @@ func (api *API) authorizedSlurmJob(c *gin.Context) (service.AuthUser, slurminteg
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return user, detail, false
 	}
-	legacyAllowed := user.Type == "admin" || detail.User == user.Username
+	projectAllowed := false
+	if api.services.DB != nil && strings.TrimSpace(detail.Account) != "" {
+		_, access, projectErr := api.services.ProjectJobAccessByAccount(c.Request.Context(), detail.Account, user.Username, api.projectCanManageAll(c, user))
+		projectAllowed = projectErr == nil && (!requireProjectManage || access == "manage")
+	}
+	legacyAllowed := user.Type == "admin" || detail.User == user.Username || projectAllowed
 	if authz, exists := permissionContext(c); exists {
 		identity := service.ResourceIdentity{Owner: detail.User}
 		if api.services.DB != nil {
@@ -1258,7 +1272,7 @@ func (api *API) authorizedSlurmJob(c *gin.Context) (service.AuthUser, slurminteg
 				identity = resolved
 			}
 		}
-		rbacAllowed := authz.Allows("jobs", identity)
+		rbacAllowed := authz.Allows("jobs", identity) || projectAllowed
 		if normalizeRBACMode(api.cfg.RBACMode) == rbacShadow && !legacyAllowed && rbacAllowed {
 			c.Set(downstreamPolicyDeniedKey, true)
 		}
@@ -1326,7 +1340,7 @@ func (api *API) applySlurmJobAction(
 	run func(context.Context, string) error,
 ) {
 	jobID := c.Param("id")
-	if _, _, ok := api.authorizedSlurmJob(c); !ok {
+	if _, _, ok := api.authorizedSlurmJob(c, true); !ok {
 		return
 	}
 	if err := run(c.Request.Context(), jobID); err != nil {

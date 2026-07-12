@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="assets/logos/simplehpc-favicon.png">
-<title>SimpleHPC — 项目中心</title>
-<link rel="stylesheet" href="css/theme.css?v=20260709projects1">
+<title>simpleHPC — 项目中心</title>
+<link rel="stylesheet" href="css/theme.css?v=20260711ui-consistency1">
 </head>
 <body>
 <div class="layout">
@@ -18,20 +18,20 @@
     <h1 class="header-title">项目中心</h1>
     <div class="header-actions">
       <input class="search-field" placeholder="搜索项目、负责人、标签..." id="globalSearch">
-      <button class="btn-icon" type="button" id="projectRefreshIcon" aria-label="刷新项目">⟳</button>
+      <button class="btn-icon" type="button" id="projectRefreshIcon" aria-label="刷新项目" title="刷新项目"><svg class="project-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6v6h-6"></path><path d="M4 18v-6h6"></path><path d="M18.5 9a7 7 0 0 0-11.7-2.6L4 9"></path><path d="m20 15-2.8 2.6A7 7 0 0 1 5.5 15"></path></svg></button>
       <div class="avatar" data-dropdown='{"html":"&lt;button class=&quot;_shpc-dropdown-item&quot; onclick=&quot;App.openProfileModal()&quot;&gt;个人资料&lt;/button&gt;&lt;button class=&quot;_shpc-dropdown-item&quot; onclick=&quot;App.openPasswordDrawer()&quot;&gt;修改密码&lt;/button&gt;&lt;div class=&quot;_shpc-dropdown-divider&quot;&gt;&lt;/div&gt;&lt;button class=&quot;_shpc-dropdown-item&quot; style=&quot;color:var(--danger)&quot; onclick=&quot;App.logout()&quot;&gt;退出登录&lt;/button&gt;","width":"160px","placement":"bottom-end"}'>管</div>
     </div>
   </header>
   <main class="main project-page">
     <section class="project-hero">
       <div>
-        <span class="project-eyebrow">PROJECT COMPUTING WORKSPACE</span>
+        <span class="project-eyebrow">项目管理</span>
         <h2>项目中心</h2>
-        <p>以项目/课题为主线组织成员、数据空间、计算任务、Slurm 作业和 License 资源，让科研计算从“单次提交”升级为可协作、可追踪、可复用的项目工作台。</p>
+        <p>统一管理项目成员、数据空间、计算任务、Slurm 作业与资源用量。</p>
       </div>
       <div class="project-hero-actions">
-        <button class="btn btn-primary" type="button" id="projectCreateBtn">新建项目</button>
-        <button class="btn btn-ghost" type="button" id="projectRefreshBtn">刷新</button>
+        <button class="btn btn-primary" type="button" id="projectCreateBtn"><svg class="project-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>新建项目</button>
+        <button class="btn btn-ghost" type="button" id="projectRefreshBtn"><svg class="project-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6v6h-6"></path><path d="M4 18v-6h6"></path><path d="M18.5 9a7 7 0 0 0-11.7-2.6L4 9"></path><path d="m20 15-2.8 2.6A7 7 0 0 1 5.5 15"></path></svg>刷新</button>
       </div>
     </section>
 
@@ -69,7 +69,7 @@
     </section>
   </main>
 </div>
-<script src="js/projects.js?v=20260709projects1"></script>
+<script src="js/projects.js?v=20260710projectui1"></script>
 <script src="js/app.js?v=20260707session"></script>
 </body>
 </html>

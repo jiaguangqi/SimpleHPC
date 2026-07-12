@@ -2,6 +2,7 @@ package slurm
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,6 +29,21 @@ func TestGPUCountFromGRES(t *testing.T) {
 				t.Fatalf("gpuCountFromGRES(%q) = %q, want %q", tt.value, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestGPUCountFromTRES(t *testing.T) {
+	if got := gpuCountFromTRES("billing=4,cpu=8,gres/gpu:a100=2,gres/gpu:v100=1,mem=64G"); got != "3" {
+		t.Fatalf("gpuCountFromTRES() = %q, want 3", got)
+	}
+}
+
+func TestNothingAddedRecognizesExistingAccount(t *testing.T) {
+	if !isNothingAdded(errors.New("Already existing account demo-cfd on cluster simplehpc-dev")) {
+		t.Fatal("existing Slurm account was not treated as an idempotent add")
+	}
+	if !isNothingAdded(errors.New("Request didn't affect anything Nothing added.")) {
+		t.Fatal("existing Slurm user association was not treated as an idempotent add")
 	}
 }
 
@@ -77,10 +93,33 @@ func TestJobActionsInvokeSlurmCommands(t *testing.T) {
 	}
 }
 
+func TestRemoveUserAccountAssociationInvokesSacctmgr(t *testing.T) {
+	binDir := t.TempDir()
+	logPath := filepath.Join(binDir, "commands.log")
+	script := "#!/bin/sh\nprintf '%s %s\\n' \"$(basename \"$0\")\" \"$*\" >> \"" + logPath + "\"\n"
+	if err := os.WriteFile(filepath.Join(binDir, "sacctmgr"), []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	client := New(binDir, "", "simplehpc", "")
+	if err := client.RemoveUserAccountAssociation(context.Background(), "demo-cfd", "user001"); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(string(data)); got != "sacctmgr -i delete user name=user001 account=demo-cfd" {
+		t.Fatalf("command = %q", got)
+	}
+	if err := client.RemoveUserAccountAssociation(context.Background(), "demo-cfd;rm", "user001"); err == nil {
+		t.Fatal("unsafe account was accepted")
+	}
+}
+
 func TestHistoryIncludesNodeList(t *testing.T) {
 	binDir := t.TempDir()
 	sacctPath := filepath.Join(binDir, "sacct")
-	script := "#!/bin/sh\nprintf '%s\\n' '931|wrap|root|debug|root|1|1|COMPLETED|00:10:00|2026-06-28T00:00:00|2026-06-28T00:00:01|2026-06-28T00:10:01|cae'\n"
+	script := "#!/bin/sh\nprintf '%s\\n' '931|wrap|root|debug|root|1|4|billing=4,cpu=4,gres/gpu=1|COMPLETED|00:10:00|600|2400|2026-06-28T00:00:00|2026-06-28T00:00:01|2026-06-28T00:10:01|cae'\n"
 	if err := os.WriteFile(sacctPath, []byte(script), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -94,6 +133,9 @@ func TestHistoryIncludesNodeList(t *testing.T) {
 	}
 	if jobs[0].NodeList != "cae" {
 		t.Fatalf("History()[0].NodeList = %q, want %q", jobs[0].NodeList, "cae")
+	}
+	if jobs[0].GPUs != "1" || jobs[0].ElapsedSeconds != 600 || jobs[0].CPUTimeSeconds != 2400 {
+		t.Fatalf("History()[0] accounting fields = %#v", jobs[0])
 	}
 }
 

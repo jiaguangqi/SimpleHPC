@@ -2,22 +2,87 @@
   'use strict';
   const token = localStorage.getItem('simplehpc_token') || '';
   const user = JSON.parse(localStorage.getItem('simplehpc_user') || '{}');
-  const state = { items: [], canManage: false, view: 'library', layout: 'grid', selected: new Set(), fields: [], selectedField: -1, designerTab: 'ui', projects: [] };
+  const templateViews = new Set(['library', 'manage', 'requests']);
+  const state = {
+    items: [],
+    canManage: false,
+    view: initialTemplateView(),
+    layout: 'grid',
+    selected: new Set(),
+    fields: [],
+    selectedField: -1,
+    selectedFieldId: '',
+    designerTab: 'ui',
+    projects: [],
+    dynamicOptions: { loaded: false, partitions: [], qos: [], associations: [], errors: {} }
+  };
   const kinds = { batch: '非交互式作业', novnc: 'noVNC 桌面', webapp: 'Web 应用转发' };
   const fieldTypes = {
     section:'分组标题', divider:'分隔线', hint:'提示文字',
     text:'单行输入', textarea:'多行输入', number:'数字输入', select:'下拉选项',
     radio:'单选项', multiselect:'多选项', checkbox:'开关', date:'日期', time:'时间', slider:'滑块',
-    partition:'队列选择', cpu:'CPU 数量', gpu:'GPU 数量', file:'输入文件', directory:'目录选择'
+    'slurm-job-name':'作业名称', 'slurm-partition':'队列名称', 'slurm-account':'项目名称（Account）',
+    'slurm-nodes':'节点数', 'slurm-ntasks':'任务总数', 'slurm-ntasks-per-node':'每节点任务数',
+    'slurm-cpus-per-task':'每任务 CPU 核数', 'slurm-gpus':'GPU 总卡数', 'slurm-gpus-per-node':'每节点 GPU 卡数',
+    'slurm-mem':'内存大小', 'slurm-time':'运行时长', 'slurm-mail-user':'通知邮箱', 'slurm-mail-type':'邮件事件',
+    'slurm-output':'标准输出', 'slurm-error':'错误输出', 'slurm-workdir':'工作目录',
+    'slurm-constraint':'节点约束', 'slurm-qos':'QOS', 'slurm-array':'作业数组', 'slurm-exclusive':'独占节点',
+    'slurm-custom':'高级 Slurm 参数', 'app-file':'应用输入文件', 'app-directory':'服务器目录', 'custom':'自定义变量',
+    partition:'队列选择（旧）', cpu:'CPU 数量（旧）', gpu:'GPU 数量（旧）', file:'输入文件（旧）', directory:'目录选择（旧）'
+  };
+  const componentCatalog = {
+    section:{group:'容器与展示', control:'display', label:'分组标题'},
+    divider:{group:'容器与展示', control:'display', label:'分隔线'},
+    hint:{group:'容器与展示', control:'display', label:'提示文字'},
+    'slurm-job-name':{group:'Slurm 资源申请', control:'text', label:'作业名称', variable:'SLURM_JOB_NAME_UI', slurmOption:'--job-name', required:true, placeholder:'如 fluent-cfd-001', help:'对应 sbatch --job-name，用于队列和作业列表展示。'},
+    'slurm-partition':{group:'Slurm 资源申请', control:'select', label:'队列名称', variable:'SLURM_PARTITION_UI', slurmOption:'--partition', required:true, dataSource:'slurm.partitions', help:'对应 sbatch --partition，提交时按当前用户和 Account 可用队列动态加载。'},
+    'slurm-account':{group:'Slurm 资源申请', control:'project', label:'项目名称（Account）', variable:'SLURM_ACCOUNT_UI', slurmOption:'--account', required:true, dataSource:'projects.accounts', help:'对应 sbatch --account，用户只能选择自己参与或被授权的项目。'},
+    'slurm-nodes':{group:'Slurm 资源申请', control:'number', label:'节点数', variable:'SLURM_NODES_UI', slurmOption:'--nodes', required:true, default:'1', min:1, max:1024, help:'对应 sbatch --nodes。'},
+    'slurm-ntasks':{group:'Slurm 资源申请', control:'number', label:'任务总数', variable:'SLURM_NTASKS_UI', slurmOption:'--ntasks', default:'1', min:1, max:100000},
+    'slurm-ntasks-per-node':{group:'Slurm 资源申请', control:'number', label:'每节点任务数', variable:'SLURM_TASKS_PER_NODE_UI', slurmOption:'--ntasks-per-node', min:1, max:4096},
+    'slurm-cpus-per-task':{group:'Slurm 资源申请', control:'number', label:'每任务 CPU 核数', variable:'SLURM_CPUS_PER_TASK_UI', slurmOption:'--cpus-per-task', required:true, default:'1', min:1, max:4096, help:'常用于表达每个计算进程需要的 CPU 核数。'},
+    'slurm-gpus':{group:'Slurm 资源申请', control:'number', label:'GPU 总卡数', variable:'SLURM_GPUS_UI', slurmOption:'--gpus', default:'0', min:0, max:128},
+    'slurm-gpus-per-node':{group:'Slurm 资源申请', control:'number', label:'每节点 GPU 卡数', variable:'SLURM_GPUS_PER_NODE_UI', slurmOption:'--gpus-per-node', default:'0', min:0, max:16},
+    'slurm-mem':{group:'Slurm 资源申请', control:'text', label:'内存大小', variable:'SLURM_MEM_UI', slurmOption:'--mem', placeholder:'如 64G 或 128000M'},
+    'slurm-time':{group:'Slurm 资源申请', control:'text', label:'运行时长', variable:'SLURM_TIME_UI', slurmOption:'--time', placeholder:'如 02:00:00 或 2-00:00:00'},
+    'slurm-mail-user':{group:'Slurm 资源申请', control:'text', label:'通知邮箱', variable:'SLURM_MAIL_USER_UI', slurmOption:'--mail-user', placeholder:'user@example.com'},
+    'slurm-mail-type':{group:'Slurm 资源申请', control:'multiselect', label:'邮件事件', variable:'SLURM_MAIL_TYPE_UI', slurmOption:'--mail-type', options:[{label:'开始',value:'BEGIN'},{label:'结束',value:'END'},{label:'失败',value:'FAIL'},{label:'全部',value:'ALL'}]},
+    'slurm-output':{group:'Slurm 资源申请', control:'text', label:'标准输出', variable:'SLURM_OUTPUT_UI', slurmOption:'--output', default:'slurm-%j.out'},
+    'slurm-error':{group:'Slurm 资源申请', control:'text', label:'错误输出', variable:'SLURM_ERROR_UI', slurmOption:'--error', default:'slurm-%j.err'},
+    'slurm-workdir':{group:'Slurm 资源申请', control:'directory', label:'工作目录', variable:'SLURM_WORKDIR_UI', slurmOption:'--chdir', placeholder:'/data/home/user/work'},
+    'slurm-constraint':{group:'Slurm 资源申请', control:'text', label:'节点约束', variable:'SLURM_CONSTRAINT_UI', slurmOption:'--constraint', placeholder:'如 gpu 或 intel'},
+    'slurm-qos':{group:'Slurm 资源申请', control:'select', label:'QOS', variable:'SLURM_QOS_UI', slurmOption:'--qos', dataSource:'slurm.qos', help:'对应 sbatch --qos，按 Slurm QOS 配置动态加载；为空则不生成该参数。'},
+    'slurm-array':{group:'Slurm 资源申请', control:'text', label:'作业数组', variable:'SLURM_ARRAY_UI', slurmOption:'--array', placeholder:'如 0-99%10'},
+    'slurm-exclusive':{group:'Slurm 资源申请', control:'checkbox', label:'独占节点', variable:'SLURM_EXCLUSIVE_UI', slurmOption:'--exclusive', help:'勾选后生成 #SBATCH --exclusive。'},
+    'slurm-custom':{group:'Slurm 资源申请', control:'text', label:'高级 Slurm 参数', variable:'SLURM_CUSTOM_UI', slurmOption:'--comment', placeholder:'参数值', help:'可在右侧修改 Slurm 参数名，例如 --reservation、--licenses。'},
+    'app-file':{group:'应用输入', control:'file', label:'输入文件', variable:'INPUT_FILE', required:false, placeholder:'/data/home/user/input.dat', help:'可填写服务器文件路径，也可在提交时上传到指定目录。'},
+    'app-directory':{group:'应用输入', control:'directory', label:'服务器目录', variable:'INPUT_DIR', placeholder:'/data/home/user/work'},
+    custom:{group:'应用输入', control:'text', label:'自定义变量', variable:'CUSTOM_PARAM', placeholder:'自定义参数值'},
+    partition:{group:'兼容旧字段', control:'select', label:'队列选择', variable:'PARTITION'},
+    cpu:{group:'兼容旧字段', control:'number', label:'CPU 数量', variable:'CPU_COUNT', min:1, max:4096},
+    gpu:{group:'兼容旧字段', control:'number', label:'GPU 数量', variable:'GPU_COUNT', min:0, max:128},
+    file:{group:'兼容旧字段', control:'file', label:'输入文件', variable:'INPUT_FILE'},
+    directory:{group:'兼容旧字段', control:'directory', label:'目录选择', variable:'INPUT_DIR'},
+    text:{group:'基础字段', control:'text', label:'单行输入'},
+    textarea:{group:'基础字段', control:'textarea', label:'多行输入'},
+    number:{group:'基础字段', control:'number', label:'数字输入', min:0, max:999999},
+    select:{group:'基础字段', control:'select', label:'下拉选项', options:[{label:'选项一',value:'option_1'},{label:'选项二',value:'option_2'}]},
+    radio:{group:'基础字段', control:'radio', label:'单选项', options:[{label:'选项一',value:'option_1'},{label:'选项二',value:'option_2'}]},
+    multiselect:{group:'基础字段', control:'multiselect', label:'多选项', options:[{label:'选项一',value:'option_1'},{label:'选项二',value:'option_2'}]},
+    checkbox:{group:'基础字段', control:'checkbox', label:'开关'},
+    date:{group:'基础字段', control:'date', label:'日期'},
+    time:{group:'基础字段', control:'time', label:'时间'},
+    slider:{group:'基础字段', control:'slider', label:'滑块', min:0, max:100}
   };
   const fieldGroups = [
     {label:'容器与展示', types:['section','divider','hint']},
-    {label:'基础字段', types:['text','textarea','number','select','radio','multiselect','checkbox','date','time','slider']},
-    {label:'HPC 扩展字段', types:['partition','cpu','gpu','file','directory']}
+    {label:'Slurm 资源申请', types:['slurm-job-name','slurm-partition','slurm-account','slurm-nodes','slurm-cpus-per-task','slurm-gpus-per-node','slurm-time','slurm-workdir','slurm-output','slurm-error','slurm-mail-user','slurm-mail-type','slurm-ntasks','slurm-ntasks-per-node','slurm-gpus','slurm-mem','slurm-constraint','slurm-qos','slurm-array','slurm-exclusive','slurm-custom']},
+    {label:'应用输入', types:['app-file','app-directory','custom','textarea','number','select','radio','multiselect','checkbox','date','time','slider']}
   ];
   const displayTypes = new Set(['section','divider','hint']);
   const $ = (s, r) => (r || document).querySelector(s);
   const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const cssSafe = value => (window.CSS && CSS.escape ? CSS.escape(String(value)) : String(value).replace(/["\\\]]/g, '\\$&'));
   const actionIcons = {
     detail: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.1 12s3.6-7 9.9-7 9.9 7 9.9 7-3.6 7-9.9 7-9.9-7-9.9-7Z"/><circle cx="12" cy="12" r="3"/></svg>',
     edit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
@@ -57,6 +122,49 @@
       .slice(0, 128);
     return value || `job-template-${id}`;
   }
+  function initialTemplateView() {
+    const view = new URLSearchParams(location.search).get('view') || 'library';
+    return templateViews.has(view) ? view : 'library';
+  }
+  function allowedTemplateView(view) {
+    const next = templateViews.has(view) ? view : 'library';
+    if (next !== 'library' && !state.canManage) return 'library';
+    return next;
+  }
+  function syncTemplateViewURL(replace) {
+    const url = new URL(location.href);
+    if (state.view === 'library') url.searchParams.delete('view');
+    else url.searchParams.set('view', state.view);
+    const next = url.pathname + url.search + url.hash;
+    const current = location.pathname + location.search + location.hash;
+    if (next === current) return;
+    history[replace ? 'replaceState' : 'pushState']({view: state.view}, '', next);
+  }
+  function syncTemplateViewChrome() {
+    document.querySelectorAll('.tpl-tabs button').forEach(button => {
+      button.classList.toggle('active', button.dataset.view === state.view);
+    });
+    const manage = state.view === 'manage';
+    const requests = state.view === 'requests';
+    $('#templatePageTitle').textContent = manage ? '模板管理' : requests ? '授权审批' : '应用广场';
+    $('#templatePageDescription').textContent = manage
+      ? '维护草稿、授权范围和发布状态；已发布模板需先取消发布后才能设计。'
+      : requests
+        ? '审批用户对应用模板的使用申请。'
+        : '选择已发布并获得授权的应用模板，填写参数后直接提交作业。';
+    $('#managerActions').hidden = !state.canManage || !manage;
+    $('#templateFilters').hidden = requests;
+    $('#templateStatus').hidden = !manage;
+    $('#templateViewSwitch').hidden = !manage;
+    $('#batchExportTemplates').hidden = !manage || state.layout !== 'list';
+  }
+  function setTemplateView(view, options) {
+    state.view = allowedTemplateView(view);
+    state.selected.clear();
+    syncTemplateViewChrome();
+    if (options?.writeURL) syncTemplateViewURL(!!options.replace);
+    render();
+  }
   function selectedProjectFromURL() {
     const params = new URLSearchParams(location.search);
     return { projectId: params.get('projectId') || '', account: params.get('account') || '' };
@@ -84,12 +192,100 @@
       ]);
       state.items = data.items || []; state.canManage = !!data.canManage;
       state.projects = projectData.items || [];
-      $('#managerActions').hidden = !state.canManage || state.view !== 'manage';
       document.querySelectorAll('.manager-only').forEach(el => el.hidden = !state.canManage);
+      state.view = allowedTemplateView(state.view);
+      syncTemplateViewChrome();
+      syncTemplateViewURL(true);
       const categories = [...new Set(state.items.map(item => item.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-CN'));
       $('#templateCategory').innerHTML = '<option value="">全部分类</option>' + categories.map(value => `<option value="${esc(value)}">${esc(value)}</option>`).join('');
       render();
     } catch (error) { $('#templateContent').innerHTML = `<div class="tpl-empty tpl-error">数据未获取：${esc(error.message)}</div>`; }
+  }
+  async function loadDynamicTemplateOptions(force) {
+    if (state.dynamicOptions.loaded && !force) return state.dynamicOptions;
+    const [partitionData, qosData] = await Promise.all([
+      api('/slurm/partitions').catch(error => ({items: [], errors: {partitions: error.message}})),
+      api('/slurm/qos').catch(error => ({qos: [], associations: [], errors: {qos: error.message, associations: error.message}}))
+    ]);
+    state.dynamicOptions = {
+      loaded: true,
+      partitions: partitionData.items || [],
+      qos: qosData.qos || [],
+      associations: qosData.associations || [],
+      errors: Object.assign({}, partitionData.errors || {}, qosData.errors || {})
+    };
+    return state.dynamicOptions;
+  }
+  function partitionOptionSummary(partition) {
+    if (!partition) return '';
+    const parts = [];
+    if (partition.cpusPerNode) parts.push(`每节点 CPU ${partition.cpusPerNode}`);
+    if (partition.gres && partition.gres !== '(null)' && partition.gres !== 'N/A') parts.push(`GRES ${partition.gres}`);
+    if (partition.maxTime) parts.push(`最长 ${partition.maxTime}`);
+    if (partition.nodeList) parts.push(`节点 ${partition.nodeList}`);
+    return parts.join(' · ');
+  }
+  function parseGresGpuCount(gres) {
+    const text = String(gres || '');
+    let max = 0;
+    text.split(',').forEach(part => {
+      const match = part.match(/gpu(?::[^:,\s]+)?:([0-9]+)/i);
+      if (match) max = Math.max(max, Number(match[1]));
+    });
+    return max;
+  }
+  function currentPartition(root) {
+    const select = root?.querySelector?.('[data-dynamic-source="slurm.partitions"]');
+    return select ? (state.dynamicOptions.partitions || []).find(item => String(item.name) === String(select.value)) : null;
+  }
+  function dynamicOptionsForField(field, projects, account) {
+    const source = fieldDataSource(field);
+    if (source === 'projects.accounts') return projectAccountOptions(projects);
+    if (source === 'slurm.partitions') {
+      const permission = authorizedPartitionNames(account);
+      const items = (state.dynamicOptions.partitions || []).filter(item => permission.allowsAll || permission.names.has(item.name));
+      return items.map(item => ({
+        label: item.name,
+        value: item.name,
+        hint: partitionOptionSummary(item)
+      }));
+    }
+    if (source === 'slurm.qos') {
+      return (state.dynamicOptions.qos || []).filter(item => item.name).map(item => ({
+        label: item.description ? `${item.name} · ${item.description}` : item.name,
+        value: item.name
+      }));
+    }
+    return field.options || [];
+  }
+  function selectableOptions(field, projects, account) {
+    const options = fieldDataSource(field) ? dynamicOptionsForField(field, projects, account) : (field.options || []);
+    return options.length ? options : [{label:'暂无可用选项', value:'', disabled:true}];
+  }
+  function updateSubmitResourceHints(root) {
+    const partition = currentPartition(root);
+    const hint = root.querySelector('[data-partition-hint]');
+    if (hint) hint.textContent = partition ? partitionOptionSummary(partition) || '该队列未返回资源上限信息' : '请选择队列后查看资源约束';
+    const cpus = root.querySelector('[data-slurm-option="--cpus-per-task"]');
+    if (cpus && partition?.cpusPerNode) cpus.max = partition.cpusPerNode;
+    const gpusPerNode = root.querySelector('[data-slurm-option="--gpus-per-node"]');
+    const gpuMax = parseGresGpuCount(partition?.gres);
+    if (gpusPerNode && gpuMax > 0) gpusPerNode.max = String(gpuMax);
+  }
+  function renderOptionTags(options, selectedValue) {
+    return options.map(option => `<option value="${esc(option.value)}" ${option.disabled?'disabled':''} ${String(selectedValue)===String(option.value)?'selected':''}>${esc(option.label)}</option>`).join('');
+  }
+  function hydrateDynamicSubmitOptions(root, projects) {
+    const account = currentSelectedAccount(root);
+    root.querySelectorAll('[data-dynamic-source]').forEach(select => {
+      const field = normalizeTemplateFields({formSchema: [{id: select.dataset.field, dataSource: select.dataset.dynamicSource, options: []}]}, false)[0];
+      const selected = select.value;
+      const source = select.dataset.dynamicSource;
+      field.dataSource = source;
+      const options = selectableOptions(field, projects, account);
+      select.innerHTML = renderOptionTags(options, options.some(option => String(option.value) === String(selected)) ? selected : options[0]?.value || '');
+    });
+    updateSubmitResourceHints(root);
   }
   function render() {
     if (state.view === 'requests') return renderRequests();
@@ -139,40 +335,178 @@
     }
     $('#batchExportTemplates').disabled = state.selected.size === 0;
   }
-  function projectAccountSelect(projects) {
-    const usable = (projects || []).filter(project => project.slurmAccount);
-    const sorted = usable.slice().sort((a, b) => (b.currentUserDefaultProject ? 1 : 0) - (a.currentUserDefaultProject ? 1 : 0) || String(a.name).localeCompare(String(b.name), 'zh-CN'));
+  function controlLabel(value) {
+    return {
+      text:'输入框', textarea:'多行输入', number:'数字输入', select:'下拉框',
+      radio:'单选框', multiselect:'多选框', checkbox:'开关', date:'日期',
+      time:'时间', slider:'滑动条', file:'输入文件', directory:'目录路径', project:'项目下拉框'
+    }[value] || value;
+  }
+  const dataSourceLabels = {
+    'projects.accounts': '项目 Account（按成员授权）',
+    'slurm.partitions': 'Slurm 队列（按用户/Account 授权）',
+    'slurm.qos': 'Slurm QOS（按集群配置）'
+  };
+  function fieldDataSource(field) {
+    return field?.dataSource || componentCatalog[field?.type]?.dataSource || '';
+  }
+  function defaultDataSourceFor(field) {
+    if (field?.slurmOption === '--account' || field?.type === 'slurm-account' || controlType(field) === 'project') return 'projects.accounts';
+    if (field?.slurmOption === '--partition' || field?.type === 'slurm-partition') return 'slurm.partitions';
+    if (field?.slurmOption === '--qos' || field?.type === 'slurm-qos') return 'slurm.qos';
+    return 'slurm.partitions';
+  }
+  function currentUsername() {
+    return String(user.username || user.account || '').trim();
+  }
+  function canSeeAllSlurmOptions() {
+    return user.type === 'admin' || ['admin','cluster_admin','hpc_admin'].includes(String(user.role || '').toLowerCase()) || state.canManage;
+  }
+  function optionLabel(value, label) {
+    const text = String(label || value || '').trim();
+    return text || '未命名';
+  }
+  function splitSlurmList(value) {
+    return String(value || '').split(/[,\s]+/).map(item => item.trim()).filter(Boolean);
+  }
+  function userAssociations() {
+    const username = currentUsername();
+    const associations = state.dynamicOptions.associations || [];
+    if (canSeeAllSlurmOptions()) return associations;
+    return associations.filter(item => String(item.user || '').trim() === username);
+  }
+  function authorizedAccountNames() {
+    const names = new Set();
+    userAssociations().forEach(item => {
+      if (item.account) names.add(String(item.account).trim());
+    });
+    return names;
+  }
+  function authorizedPartitionNames(account) {
+    const associations = userAssociations().filter(item => !account || !item.account || String(item.account) === String(account));
+    const names = new Set();
+    let allowsAll = canSeeAllSlurmOptions() || !associations.length;
+    associations.forEach(item => {
+      const parts = splitSlurmList(item.partition);
+      if (!parts.length) allowsAll = true;
+      parts.forEach(name => names.add(name));
+    });
+    return { names, allowsAll };
+  }
+  function currentSelectedAccount(root) {
+    const select = root?.querySelector?.('[data-core="account"]');
+    return select ? select.value : '';
+  }
+  function accountFallbackOptions() {
+    const authorized = authorizedAccountNames();
+    return [...authorized].sort((a, b) => a.localeCompare(b, 'zh-CN')).map(account => ({
+      label: `Slurm Account：${account}`,
+      value: account,
+      projectId: ''
+    }));
+  }
+  function projectAccountOptions(projects) {
+    const usable = (projects || []).filter(project => project.slurmAccount).map(project => ({
+      label: `${project.name}${project.currentUserDefaultProject ? '（默认）' : ''} · ${project.slurmAccount}`,
+      value: project.slurmAccount,
+      projectId: project.id,
+      default: !!project.currentUserDefaultProject,
+      sortName: project.name
+    }));
+    const seen = new Set(usable.map(option => String(option.value)));
+    accountFallbackOptions().forEach(option => {
+      if (!seen.has(String(option.value))) usable.push(option);
+    });
+    return usable.sort((a, b) => (b.default ? 1 : 0) - (a.default ? 1 : 0) || String(a.sortName || a.label).localeCompare(String(b.sortName || b.label), 'zh-CN'));
+  }
+  function projectAccountSelect(projects, field) {
+    const sorted = projectAccountOptions(projects);
     const preferred = selectedProjectFromURL();
     if (!sorted.length) {
-      return `<label class="wide">所属项目<select data-core="account" data-project-select disabled><option value="">暂无可用项目</option></select><small>请先在项目中心加入项目，或联系项目负责人授权。</small></label>`;
+      return `<label class="wide">${esc(field?.label || '所属项目')}<select data-core="account" data-field="${esc(field?.id || '')}" data-project-select disabled><option value="">暂无可用项目</option></select><small>请先在项目中心加入项目，或联系项目负责人授权。</small></label>`;
     }
-    return `<label class="wide">所属项目<select data-core="account" data-project-select>
-      ${sorted.map(project => {
-        const matched = preferred.projectId ? String(project.id) === String(preferred.projectId) : (preferred.account ? String(project.slurmAccount) === preferred.account : project.currentUserDefaultProject);
-        return `<option value="${esc(project.slurmAccount)}" data-project-id="${esc(project.id)}" ${matched ? 'selected' : ''}>${esc(project.name)}${project.currentUserDefaultProject ? '（默认）' : ''} · ${esc(project.slurmAccount)}</option>`;
+    return `<label class="wide">${esc(field?.label || '所属项目')}<select data-core="account" data-field="${esc(field?.id || '')}" data-project-select>
+      ${sorted.map(option => {
+        const matched = preferred.projectId ? String(option.projectId) === String(preferred.projectId) : (preferred.account ? String(option.value) === preferred.account : option.default);
+        return `<option value="${esc(option.value)}" data-project-id="${esc(option.projectId || '')}" ${matched ? 'selected' : ''}>${esc(option.label)}</option>`;
       }).join('')}
-    </select><small>系统会把所选项目写入 Slurm 脚本的 --account。</small></label>`;
+    </select><small>系统会把所选项目写入 Slurm 脚本的 --account；未授权的 Account 不会出现在列表中。</small></label>`;
+  }
+  function controlType(field) {
+    return field.control || componentCatalog[field.type]?.control || field.type || 'text';
+  }
+  function ensureFieldId(field, index) {
+    if (!field.id) field.id = 'field_' + Date.now() + '_' + index + '_' + Math.random().toString(36).slice(2, 6);
+    return field.id;
+  }
+  function selectedFieldIndex() {
+    const byId = state.selectedFieldId ? state.fields.findIndex(field => field.id === state.selectedFieldId) : -1;
+    if (byId >= 0) {
+      state.selectedField = byId;
+      return byId;
+    }
+    const fallback = Number.isInteger(state.selectedField) ? state.selectedField : -1;
+    if (fallback >= 0 && fallback < state.fields.length) {
+      state.selectedFieldId = state.fields[fallback]?.id || '';
+      return fallback;
+    }
+    state.selectedField = state.fields.length ? 0 : -1;
+    state.selectedFieldId = state.fields[0]?.id || '';
+    return state.selectedField;
+  }
+  function selectedField() {
+    const index = selectedFieldIndex();
+    return index >= 0 ? state.fields[index] : null;
+  }
+  function selectFieldById(fieldId) {
+    const index = state.fields.findIndex(field => field.id === fieldId);
+    state.selectedField = index;
+    state.selectedFieldId = index >= 0 ? fieldId : '';
+    return index;
+  }
+  function selectFieldAt(index) {
+    const field = state.fields[index];
+    state.selectedField = field ? index : -1;
+    state.selectedFieldId = field?.id || '';
+  }
+  function hasSlurmFields(fields) {
+    return (fields || []).some(field => field && field.slurmOption);
+  }
+  function defaultSlurmFields(template) {
+    const base = ['slurm-job-name','slurm-account','slurm-partition','slurm-nodes','slurm-cpus-per-task','slurm-gpus-per-node','slurm-time','slurm-workdir','slurm-output','slurm-error'];
+    return base.map(type => {
+      const field = makeField(type);
+      if (type === 'slurm-job-name') field.default = safeJobName(template?.name || 'simpleHPC', template?.id || 0);
+      return field;
+    });
+  }
+  function normalizeTemplateFields(item, forEdit) {
+    const fields = JSON.parse(JSON.stringify(item.formSchema || []));
+    fields.forEach((field, index) => {
+      ensureFieldId(field, index);
+      const spec = componentCatalog[field.type] || {};
+      if (!field.control && spec.control && spec.control !== 'display') field.control = spec.control;
+      if (!field.slurmOption && spec.slurmOption) field.slurmOption = spec.slurmOption;
+      if (!field.dataSource && spec.dataSource) field.dataSource = spec.dataSource;
+      if (!field.optionMode) field.optionMode = field.dataSource ? 'dynamic' : 'fixed';
+      if (!field.label) field.label = spec.label || fieldTypes[field.type] || '未命名字段';
+    });
+    if (forEdit && fields.length && !hasSlurmFields(fields)) return [...defaultSlurmFields(item), ...fields];
+    if (forEdit && !fields.length) return [...defaultSlurmFields(item), makeField('app-file'), makeField('custom')];
+    return fields;
   }
   function templateParameterForm(item, username, projects) {
-    const fields = (item.formSchema || []).map(submitField).join('');
-    const walltime = item.kind === 'novnc'
-      ? '<label>预计运行时间<input data-core="walltime" value="24:00:00" pattern="[0-9]+:[0-5][0-9]:[0-5][0-9]"><small>默认 24 小时，格式：小时:分钟:秒</small></label>'
-      : '';
+    const fields = normalizeTemplateFields(item, false).map(field => submitField(field, username, projects)).join('');
     return `<div class="tpl-use-heading"><div><h3>作业参数</h3><p>按本次任务需要调整资源、输入文件和工作目录。</p></div></div>
       <div class="tpl-submit-grid">
-        <label>作业名称<input data-core="jobName" value="${esc(safeJobName(item.name, item.id))}" pattern="[A-Za-z0-9._-]+"></label>
-        ${projectAccountSelect(projects || [])}
-        <label>分区<input data-core="partition" value="debug"></label>
-        <label>节点数<input data-core="nodes" type="number" min="1" value="1"></label>
-        <label>CPU 核数<input data-core="cpus" type="number" min="1" value="1"></label>
-        <label>GPU 数量<input data-core="gpus" type="number" min="0" value="0"></label>
-        <label>工作目录<input data-core="workdir" value="/data/home/${esc(username || 'user')}"></label>
-        ${walltime}
-        ${fields}
+        ${fields || '<div class="tpl-submit-hint wide">该模板尚未配置参数组件，请联系管理员在模板管理中添加 Slurm 资源申请和应用输入组件。</div>'}
       </div>`;
   }
   async function detail(id) {
-    const item = await api('/job-templates/' + id);
+    const [item] = await Promise.all([
+      api('/job-templates/' + id),
+      loadDynamicTemplateOptions()
+    ]);
     const modal = App.modal({
       title:'模板预览：' + item.name,
       width:'min(94vw, 1120px)',
@@ -198,50 +532,59 @@
   }
   function makeField(type) {
     const n = state.fields.filter(field => !displayTypes.has(field.type)).length + 1;
+    const spec = componentCatalog[type] || {};
     const field = {
       id:'field_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
       type:type,
-      label:fieldTypes[type] || '新字段',
-      variable:displayTypes.has(type) ? '' : 'PARAM_' + n,
-      required:false,
-      default:'',
-      placeholder:'',
-      help:''
+      label:spec.label || fieldTypes[type] || '新字段',
+      control:displayTypes.has(type) ? '' : (spec.control || type),
+      variable:displayTypes.has(type) ? '' : (spec.variable || 'PARAM_' + n),
+      slurmOption:spec.slurmOption || '',
+      dataSource:spec.dataSource || '',
+      optionMode:spec.dataSource ? 'dynamic' : 'fixed',
+      required:!!spec.required,
+      default:spec.default || '',
+      placeholder:spec.placeholder || '',
+      help:spec.help || ''
     };
-    if (['select','radio','multiselect'].includes(type)) {
-      field.options = [{label:'选项一',value:'option_1'},{label:'选项二',value:'option_2'}];
+    if (spec.options || ['select','radio','multiselect'].includes(field.control)) {
+      field.options = JSON.parse(JSON.stringify(spec.options || [{label:'选项一',value:'option_1'},{label:'选项二',value:'option_2'}]));
     }
-    if (type === 'number' || type === 'cpu' || type === 'gpu' || type === 'slider') {
-      field.min = 0;
-      field.max = type === 'gpu' ? 8 : 128;
+    if (['number','slider'].includes(field.control)) {
+      field.min = spec.min == null ? 0 : spec.min;
+      field.max = spec.max == null ? 128 : spec.max;
     }
     return field;
   }
   function addField(type, root) {
-    state.fields.push(makeField(type));
-    state.selectedField = state.fields.length - 1;
+    const field = makeField(type);
+    state.fields.push(field);
+    selectFieldById(field.id);
     renderBuilder(root);
   }
   function fieldControlPreview(field) {
+    const control = controlType(field);
     if (field.type === 'section') return `<h3>${esc(field.label || '分组标题')}</h3>`;
     if (field.type === 'divider') return '<hr>';
     if (field.type === 'hint') return `<div class="tpl-canvas-hint">${esc(field.label || '提示文字')}</div>`;
-    if (field.type === 'textarea') return `<textarea disabled placeholder="${esc(field.placeholder || '多行文本')}"></textarea>`;
-    if (['select','partition','radio','multiselect'].includes(field.type)) return `<select disabled><option>${esc(field.placeholder || '请选择')}</option></select>`;
-    if (field.type === 'checkbox') return '<span class="tpl-switch-preview"><i></i></span>';
-    if (field.type === 'slider') return '<input type="range" disabled>';
-    const type = ['number','cpu','gpu'].includes(field.type) ? 'number' : field.type === 'date' ? 'date' : field.type === 'time' ? 'time' : 'text';
+    if (control === 'textarea') return `<textarea disabled placeholder="${esc(field.placeholder || '多行文本')}"></textarea>`;
+    if (['select','project','radio','multiselect'].includes(control)) return `<select disabled><option>${esc(field.placeholder || '请选择')}</option></select>`;
+    if (control === 'checkbox') return '<span class="tpl-switch-preview"><i></i></span>';
+    if (control === 'slider') return '<input type="range" disabled>';
+    if (control === 'file') return `<div class="tpl-file-preview"><span>服务器路径 / 上传文件</span></div>`;
+    const type = control === 'number' ? 'number' : control === 'date' ? 'date' : control === 'time' ? 'time' : 'text';
     return `<input type="${type}" disabled placeholder="${esc(field.placeholder || fieldTypes[field.type] || '')}">`;
   }
   function fieldCanvas(field, index) {
-    const selected = index === state.selectedField ? ' selected' : '';
-    const variable = displayTypes.has(field.type) ? '' : `<code>\${${esc(field.variable || '未设置变量')}}</code>`;
-    return `<div class="tpl-canvas-field${selected}" draggable="true" data-field-index="${index}">
-      <button type="button" class="tpl-canvas-drag" title="拖拽排序">⋮⋮</button>
+    const selected = field.id === state.selectedFieldId ? ' selected' : '';
+    const slurm = field.slurmOption ? `<code>${esc(field.slurmOption)}</code>` : '';
+    const variable = displayTypes.has(field.type) ? '' : `<span>${slurm}<code>\${${esc(field.variable || '未设置变量')}}</code></span>`;
+    return `<div class="tpl-canvas-field${selected}" data-field-id="${esc(field.id)}" data-field-index="${index}">
+      <button type="button" class="tpl-canvas-drag" draggable="true" data-field-action="drag" title="拖拽排序">⋮⋮</button>
       <div class="tpl-canvas-content">
         ${displayTypes.has(field.type) ? fieldControlPreview(field) : `<div class="tpl-canvas-label"><b>${esc(field.label || '未命名字段')}${field.required ? ' *' : ''}</b>${variable}</div>${fieldControlPreview(field)}${field.help ? `<small>${esc(field.help)}</small>` : ''}`}
       </div>
-      <button type="button" class="btn-icon tpl-canvas-remove" data-remove="${index}" title="删除组件">×</button>
+      <button type="button" class="btn-icon tpl-canvas-remove" data-remove="${esc(field.id)}" data-field-action="delete" title="删除组件">×</button>
     </div>`;
   }
   function optionsToText(field) {
@@ -255,35 +598,71 @@
   }
   function renderProperties(root) {
     const panel = $('.tpl-property-panel', root);
-    const field = state.fields[state.selectedField];
+    const field = selectedField();
     if (!field) {
       panel.innerHTML = '<div class="tpl-property-empty">在画布中选择一个组件后，可在这里编辑名称、变量和内容。</div>';
       return;
     }
     const isDisplay = displayTypes.has(field.type);
-    const hasOptions = ['select','radio','multiselect'].includes(field.type);
-    const hasRange = ['number','cpu','gpu','slider'].includes(field.type);
+    const control = controlType(field);
+    const hasOptions = ['select','radio','multiselect','project'].includes(control);
+    const optionMode = field.optionMode || (fieldDataSource(field) ? 'dynamic' : 'fixed');
+    const dataSource = fieldDataSource(field);
+    const showFixedOptions = hasOptions && optionMode !== 'dynamic';
+    const showDynamicSource = hasOptions && optionMode === 'dynamic';
+    const hasRange = ['number','slider'].includes(control);
     panel.innerHTML = `<div class="tpl-property-heading"><span>${esc(fieldTypes[field.type] || field.type)}</span><code>#${esc(field.id)}</code></div>
       <label>组件类型<select data-field-prop="type">${Object.entries(fieldTypes).map(([value,label])=>`<option value="${value}" ${field.type===value?'selected':''}>${label}</option>`).join('')}</select></label>
       <label>${isDisplay ? '显示内容' : '字段名称'}<input data-field-prop="label" value="${esc(field.label)}"></label>
-      ${isDisplay ? '' : `<label>变量名称<input data-field-prop="variable" value="${esc(field.variable)}" placeholder="INPUT_FILE"><small>保存为 Slurm 脚本可调用的环境变量</small></label>
+      ${isDisplay ? '' : `<label>控件类型<select data-field-prop="control">${['text','textarea','number','select','radio','multiselect','checkbox','date','time','slider','file','directory','project'].map(value=>`<option value="${value}" ${control===value?'selected':''}>${esc(controlLabel(value))}</option>`).join('')}</select></label>
+      <label>变量名称<input data-field-prop="variable" value="${esc(field.variable)}" placeholder="INPUT_FILE"><small>保存为 Slurm 脚本可调用的环境变量</small></label>
+      <label>Slurm 参数名<input data-field-prop="slurmOption" value="${esc(field.slurmOption || '')}" placeholder="例如 --nodes"><small>填写后会自动生成 #SBATCH；留空则只导出变量</small></label>
+      ${hasOptions ? `<label>选项来源<select data-field-prop="optionMode"><option value="fixed" ${optionMode==='fixed'?'selected':''}>固定值：手工维护选项</option><option value="dynamic" ${optionMode==='dynamic'?'selected':''}>动态值：按用户权限自动获取</option></select><small>队列、项目 Account、QOS 推荐使用动态来源。</small></label>` : ''}
+      ${showDynamicSource ? `<label>动态数据源<select data-field-prop="dataSource">${Object.entries(dataSourceLabels).map(([value,label])=>`<option value="${value}" ${dataSource===value?'selected':''}>${esc(label)}</option>`).join('')}</select><small>提交作业时会按当前用户权限加载；Slurm 查询失败时显示友好降级提示。</small></label>` : ''}
       <label>默认值<input data-field-prop="default" value="${esc(field.default == null ? '' : field.default)}"></label>
       <label>占位提示<input data-field-prop="placeholder" value="${esc(field.placeholder || '')}"></label>
       <label>帮助说明<input data-field-prop="help" value="${esc(field.help || '')}"></label>
       <label class="tpl-property-check"><input type="checkbox" data-field-prop="required" ${field.required?'checked':''}> 必填字段</label>`}
-      ${hasOptions ? `<label>选项配置<textarea data-field-prop="optionsText" rows="5" placeholder="显示名称=实际值">${esc(optionsToText(field))}</textarea><small>每行一个选项，格式：名称=值</small></label>` : ''}
+      ${showFixedOptions ? `<label>选项配置<textarea data-field-prop="optionsText" rows="5" placeholder="显示名称=实际值">${esc(optionsToText(field))}</textarea><small>每行一个选项，格式：名称=值。保存后提交页按这些固定值展示。</small></label>` : ''}
       ${hasRange ? `<div class="tpl-property-range"><label>最小值<input type="number" data-field-prop="min" value="${esc(field.min == null ? '' : field.min)}"></label><label>最大值<input type="number" data-field-prop="max" value="${esc(field.max == null ? '' : field.max)}"></label></div>` : ''}`;
     panel.querySelectorAll('[data-field-prop]').forEach(control => {
       control.addEventListener(control.type === 'checkbox' || control.tagName === 'SELECT' ? 'change' : 'input', () => {
-        const current = state.fields[state.selectedField];
+        const current = selectedField();
+        if (!current) return;
         const prop = control.dataset.fieldProp;
         if (prop === 'optionsText') current.options = textToOptions(control.value);
         else if (control.type === 'checkbox') current[prop] = control.checked;
         else if (['min','max'].includes(prop)) current[prop] = control.value === '' ? null : Number(control.value);
-        else current[prop] = control.value;
+        else if (prop === 'optionMode') {
+          current.optionMode = control.value;
+          current.dataSource = control.value === 'dynamic' ? (current.dataSource || defaultDataSourceFor(current)) : '';
+          if (control.value === 'fixed' && (!current.options || !current.options.length) && ['select','radio','multiselect'].includes(controlType(current))) current.options = textToOptions('选项一=option_1\n选项二=option_2');
+        } else if (prop === 'dataSource') {
+          current.dataSource = control.value;
+          current.optionMode = 'dynamic';
+        } else current[prop] = control.value;
         if (prop === 'type') {
-          if (displayTypes.has(current.type)) current.variable = '';
-          else if (!current.variable) current.variable = 'PARAM_' + (state.selectedField + 1);
+          const spec = componentCatalog[current.type] || {};
+          if (displayTypes.has(current.type)) {
+            current.variable = '';
+            current.slurmOption = '';
+            current.control = '';
+            current.dataSource = '';
+            current.optionMode = 'fixed';
+          } else {
+            current.control = spec.control || current.control || 'text';
+            current.slurmOption = spec.slurmOption || current.slurmOption || '';
+            current.dataSource = spec.dataSource || current.dataSource || '';
+            current.optionMode = current.dataSource ? 'dynamic' : (current.optionMode || 'fixed');
+            if (!current.variable) current.variable = spec.variable || 'PARAM_' + (selectedFieldIndex() + 1);
+          }
+          renderBuilder(root);
+        } else if (prop === 'control') {
+          if (['select','radio','multiselect'].includes(controlType(current)) && current.optionMode !== 'dynamic' && (!current.options || !current.options.length)) {
+            current.options = textToOptions('选项一=option_1\n选项二=option_2');
+          }
+          renderBuilder(root);
+        } else if (prop === 'optionMode' || prop === 'dataSource') {
           renderBuilder(root);
         } else {
           renderCanvas(root);
@@ -294,38 +673,57 @@
   function renderCanvas(root) {
     const list = $('.tpl-builder-list', root);
     if (!list) return;
+    selectedFieldIndex();
     list.innerHTML = state.fields.map(fieldCanvas).join('') || '<div class="tpl-builder-empty"><b>将左侧组件拖到这里</b><span>也可以点击组件快速添加</span></div>';
     const count = $('.tpl-canvas-toolbar small', root);
     if (count) count.textContent = `${state.fields.length} 个组件`;
-    list.querySelectorAll('[data-field-index]').forEach(card => {
-      card.onclick = event => {
-        if (event.target.closest('[data-remove]')) return;
-        state.selectedField = Number(card.dataset.fieldIndex);
+    list.querySelectorAll('[data-field-id]').forEach(card => {
+      card.onpointerdown = event => {
+        if (event.target.closest('[data-field-action]')) return;
+        if (selectFieldById(card.dataset.fieldId) < 0) return;
         renderCanvas(root);
         renderProperties(root);
-      };
-      card.ondragstart = event => {
-        event.dataTransfer.setData('text/x-template-index', card.dataset.fieldIndex);
-        event.dataTransfer.effectAllowed = 'move';
       };
       card.ondragover = event => event.preventDefault();
       card.ondrop = event => {
         event.preventDefault();
-        const from = Number(event.dataTransfer.getData('text/x-template-index'));
-        if (!Number.isNaN(from)) {
-          const to = Number(card.dataset.fieldIndex);
+        const type = event.dataTransfer.getData('text/x-template-field');
+        if (type) {
+          const to = state.fields.findIndex(field => field.id === card.dataset.fieldId);
+          const field = makeField(type);
+          state.fields.splice(to >= 0 ? to + 1 : state.fields.length, 0, field);
+          selectFieldById(field.id);
+          renderBuilder(root);
+          return;
+        }
+        const fromId = event.dataTransfer.getData('text/x-template-field-id');
+        const from = state.fields.findIndex(field => field.id === fromId);
+        const to = state.fields.findIndex(field => field.id === card.dataset.fieldId);
+        if (from >= 0 && to >= 0 && from !== to) {
           const moved = state.fields.splice(from, 1)[0];
           state.fields.splice(to, 0, moved);
-          state.selectedField = to;
+          selectFieldById(moved.id);
           renderBuilder(root);
         }
       };
     });
+    list.querySelectorAll('[data-field-action="drag"]').forEach(handle => {
+      handle.ondragstart = event => {
+        const card = handle.closest('[data-field-id]');
+        if (!card) return;
+        event.dataTransfer.setData('text/x-template-field-id', card.dataset.fieldId);
+        event.dataTransfer.effectAllowed = 'move';
+      };
+    });
     list.querySelectorAll('[data-remove]').forEach(button => {
-      button.onclick = () => {
-        const index = Number(button.dataset.remove);
+      button.onclick = event => {
+        event.stopPropagation();
+        const id = button.dataset.remove;
+        const index = state.fields.findIndex(field => field.id === id);
+        if (index < 0) return;
         state.fields.splice(index, 1);
-        state.selectedField = Math.min(state.selectedField, state.fields.length - 1);
+        const nextIndex = Math.min(index, state.fields.length - 1);
+        selectFieldAt(nextIndex);
         renderBuilder(root);
       };
     });
@@ -392,8 +790,8 @@
   }
   async function edit(id) {
     const item=id?await api('/job-templates/'+id):{name:'',description:'',category:'',kind:'batch',status:'draft',formSchema:[],scriptTemplate:'echo "请编辑执行命令"',runtime:{}};
-    state.fields=JSON.parse(JSON.stringify(item.formSchema||[]));
-    state.selectedField=state.fields.length ? 0 : -1;
+    state.fields=normalizeTemplateFields(item, true);
+    selectFieldAt(state.fields.length ? 0 : -1);
     state.designerTab='ui';
     const modal=App.modal({title:id?'编辑作业模板':'新建作业模板',width:'min(96vw, 1520px)',content:`<div class="tpl-editor tpl-editor-v2">
       <div class="tpl-editor-basics"><label>模板名称<input id="teName" value="${esc(item.name)}"></label><label>作业类型<select id="teKind">${Object.entries(kinds).map(([v,l])=>`<option value="${v}" ${item.kind===v?'selected':''}>${l}</option>`).join('')}</select></label><label>场景分类<input id="teCategory" value="${esc(item.category)}" placeholder="如 AI训练、科学计算"></label><label>模板说明<textarea id="teDescription">${esc(item.description)}</textarea></label></div>
@@ -421,25 +819,54 @@
     renderBuilder(root);
     renderDesignerTab(root);
   }
-  function submitField(field) {
+  function fileField(field) {
+    const id = esc(field.id);
+    const destination = esc(field.uploadPath || field.workdir || field.defaultUploadPath || '');
+    return `<label class="wide tpl-file-control" data-file-control="${id}">${esc(field.label)}${field.required?' *':''}
+      <div class="tpl-file-mode">
+        <select data-file-mode="${id}">
+          <option value="server">选择服务器文件路径</option>
+          <option value="upload">上传本地文件到服务器目录</option>
+        </select>
+        <input data-file-path="${id}" data-field="${id}" value="${esc(field.default || '')}" placeholder="${esc(field.placeholder || '/data/home/user/input.dat')}">
+      </div>
+      <div class="tpl-file-upload-row" data-file-upload-row="${id}" hidden>
+        <input data-upload-dir="${id}" value="${destination}" placeholder="/data/home/user/work">
+        <input type="file" data-upload-file="${id}">
+      </div>
+      ${field.help?`<small>${esc(field.help)}</small>`:'<small>服务器路径用于脚本变量；上传文件会在提交前写入指定目录。</small>'}
+    </label>`;
+  }
+  function submitField(field, username, projects) {
     if (field.type === 'section') return `<h3 class="tpl-submit-section">${esc(field.label)}</h3>`;
     if (field.type === 'divider') return '<hr class="tpl-submit-divider">';
     if (field.type === 'hint') return `<div class="tpl-submit-hint">${esc(field.label)}</div>`;
+    const control = controlType(field);
+    const source = fieldDataSource(field);
+    const common = `data-field="${esc(field.id)}" data-slurm-option="${esc(field.slurmOption || '')}"`;
+    if (control === 'project' || field.slurmOption === '--account') return projectAccountSelect(projects || [], field);
+    if (control === 'file') return fileField(field);
+    const options = selectableOptions(field, projects, '');
     let input = '';
-    if (field.type === 'textarea') input = `<textarea data-field="${field.id}" placeholder="${esc(field.placeholder || '')}">${esc(field.default || '')}</textarea>`;
-    else if (['select','partition','radio','multiselect'].includes(field.type)) input = `<select data-field="${field.id}" ${field.type==='multiselect'?'multiple':''}>${(field.options||[]).map(option=>`<option value="${esc(option.value)}">${esc(option.label)}</option>`).join('')}</select>`;
-    else if (field.type === 'checkbox') input = `<input data-field="${field.id}" type="checkbox" ${field.default?'checked':''}>`;
-    else if (field.type === 'slider') input = `<input data-field="${field.id}" type="range" min="${esc(field.min == null ? 0 : field.min)}" max="${esc(field.max == null ? 100 : field.max)}" value="${esc(field.default == null ? 0 : field.default)}">`;
+    if (control === 'textarea') input = `<textarea ${common} placeholder="${esc(field.placeholder || '')}">${esc(field.default || '')}</textarea>`;
+    else if (control === 'select') input = `<select ${common} ${source?`data-dynamic-source="${esc(source)}"`:''}>${options.map(option=>`<option value="${esc(option.value)}" ${option.disabled?'disabled':''} ${String(field.default)===String(option.value)?'selected':''}>${esc(option.label)}</option>`).join('')}</select>${source==='slurm.partitions'?'<small data-partition-hint>请选择队列后查看资源约束</small>':''}`;
+    else if (control === 'radio') input = `<div class="tpl-choice-group">${options.map(option=>`<label><input ${common} name="tpl_${esc(field.id)}" type="radio" value="${esc(option.value)}" ${option.disabled?'disabled':''} ${String(field.default)===String(option.value)?'checked':''}> ${esc(option.label)}</label>`).join('')}</div>`;
+    else if (control === 'multiselect') input = `<select ${common} multiple ${source?`data-dynamic-source="${esc(source)}"`:''}>${options.map(option=>`<option value="${esc(option.value)}" ${option.disabled?'disabled':''} ${String(field.default).split(',').includes(String(option.value))?'selected':''}>${esc(option.label)}</option>`).join('')}</select>`;
+    else if (control === 'checkbox') input = `<input ${common} type="checkbox" ${field.default?'checked':''}>`;
+    else if (control === 'slider') input = `<input ${common} type="range" min="${esc(field.min == null ? 0 : field.min)}" max="${esc(field.max == null ? 100 : field.max)}" value="${esc(field.default == null ? 0 : field.default)}">`;
     else {
-      const type = ['number','cpu','gpu'].includes(field.type) ? 'number' : field.type === 'date' ? 'date' : field.type === 'time' ? 'time' : field.type === 'file' ? 'text' : 'text';
-      input = `<input data-field="${field.id}" type="${type}" value="${esc(field.default || '')}" placeholder="${esc(field.placeholder || '')}" ${field.min==null?'':`min="${esc(field.min)}"`} ${field.max==null?'':`max="${esc(field.max)}"`}>`;
+      const type = control === 'number' ? 'number' : control === 'date' ? 'date' : control === 'time' ? 'time' : 'text';
+      const fallback = control === 'directory' && !field.default ? `/data/home/${username || 'user'}` : (field.default || '');
+      input = `<input ${common} type="${type}" value="${esc(fallback)}" placeholder="${esc(field.placeholder || '')}" ${field.min==null?'':`min="${esc(field.min)}"`} ${field.max==null?'':`max="${esc(field.max)}"`}>`;
     }
-    return `<label>${esc(field.label)}${field.required?' *':''}${input}${field.help?`<small>${esc(field.help)}</small>`:''}</label>`;
+    const sourceHelp = source && source !== 'slurm.partitions' ? `<small>选项来源：${esc(dataSourceLabels[source] || source)}</small>` : '';
+    return `<label>${esc(field.label)}${field.required?' *':''}${input}${field.help?`<small>${esc(field.help)}</small>`:sourceHelp}</label>`;
   }
   async function useTemplate(id) {
     const [item, projectData]=await Promise.all([
       api('/job-templates/'+id),
-      api('/projects').catch(() => ({items: state.projects || []}))
+      api('/projects').catch(() => ({items: state.projects || []})),
+      loadDynamicTemplateOptions()
     ]);
     state.projects = projectData.items || state.projects || [];
     const username=user.username||'user';
@@ -453,7 +880,7 @@
         <section class="tpl-use-preview"><div class="tpl-use-preview-head"><div><h3>预览最终脚本</h3><p id="previewState">根据左侧当前参数生成</p></div><button type="button" class="btn btn-ghost" id="previewScript">刷新脚本内容</button></div><pre id="scriptPreview">正在生成脚本...</pre></section>
       </div>`,
       onSubmit:async()=>{
-        const run=await api('/job-templates/'+id+'/submit',{method:'POST',body:JSON.stringify(collect(modal.el))});
+        const run=await api('/job-templates/'+id+'/submit',{method:'POST',body:JSON.stringify(await collect(modal.el, {uploadFiles:true}))});
         App.toast((item.kind==='novnc'?'VNC 桌面作业 ':'作业 ')+run.slurmJobId+' 已提交','success',5000);
       }
     });
@@ -461,15 +888,42 @@
     const refresh=async()=>{
       const stateLabel=$('#previewState',modal.el);
       stateLabel.textContent='正在生成...';
-      const data=await api('/job-templates/'+id+'/preview',{method:'POST',body:JSON.stringify(collect(modal.el))});
+      const data=await api('/job-templates/'+id+'/preview',{method:'POST',body:JSON.stringify(await collect(modal.el, {uploadFiles:false}))});
       $('#scriptPreview',modal.el).textContent=data.script;
       stateLabel.textContent='已按当前参数更新';
     };
     $('#previewScript',modal.el).onclick=()=>refresh().catch(error=>App.toast(error.message,'danger',5000));
-    modal.el.querySelectorAll('[data-core],[data-field]').forEach(control=>control.addEventListener('input',()=>{$('#previewState',modal.el).textContent='参数已变化，请刷新脚本';}));
+    hydrateDynamicSubmitOptions(modal.el, state.projects);
+    modal.el.querySelectorAll('[data-core],[data-field],[data-file-mode],[data-upload-dir],[data-upload-file]').forEach(control=>{
+      const markDirty=()=>{$('#previewState',modal.el).textContent='参数已变化，请刷新脚本';};
+      control.addEventListener('input', markDirty);
+      control.addEventListener('change', () => {
+        if (control.matches('[data-core="account"]')) hydrateDynamicSubmitOptions(modal.el, state.projects);
+        if (control.matches('[data-dynamic-source="slurm.partitions"]')) updateSubmitResourceHints(modal.el);
+        if (control.matches('[data-file-mode]')) {
+          const id = control.dataset.fileMode;
+          const row = modal.el.querySelector(`[data-file-upload-row="${cssSafe(id)}"]`);
+          const path = modal.el.querySelector(`[data-file-path="${cssSafe(id)}"]`);
+          if (row) row.hidden = control.value !== 'upload';
+          if (path) path.hidden = control.value === 'upload';
+        }
+        markDirty();
+      });
+    });
     await refresh();
   }
-  function collect(root){const values={};root.querySelectorAll('[data-core]').forEach(x=>{values[x.dataset.core]=x.type==='number'?Number(x.value):x.value;if(x.matches('[data-project-select]')){const option=x.selectedOptions&&x.selectedOptions[0];values.projectId=option&&option.dataset.projectId?Number(option.dataset.projectId):0;}});root.querySelectorAll('[data-field]').forEach(x=>{if(x.type==='checkbox')values[x.dataset.field]=x.checked;else if(x.multiple)values[x.dataset.field]=Array.from(x.selectedOptions).map(o=>o.value).join(',');else values[x.dataset.field]=x.type==='number'?Number(x.value):x.value;});return values;}
+  async function uploadTemplateFile(directory, file) {
+    const form = new FormData();
+    form.append('path', directory);
+    form.append('file', file);
+    const response = await fetch('/api/v1/storage/upload', {method:'POST', headers:{'Authorization':'Bearer '+token}, body:form});
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || '文件上传失败 (' + response.status + ')');
+  }
+  function joinPath(directory, name) {
+    return String(directory || '').replace(/\/+$/, '') + '/' + String(name || '').replace(/^\/+/, '');
+  }
+  async function collect(root, options){const values={};const upload=options&&options.uploadFiles;root.querySelectorAll('[data-core]').forEach(x=>{values[x.dataset.core]=x.type==='number'?Number(x.value):x.value;if(x.matches('[data-project-select]')){const option=x.selectedOptions&&x.selectedOptions[0];values.projectId=option&&option.dataset.projectId?Number(option.dataset.projectId):0;}});for(const wrap of root.querySelectorAll('[data-file-control]')){const id=wrap.dataset.fileControl;const safe=cssSafe(id);const mode=root.querySelector(`[data-file-mode="${safe}"]`)?.value||'server';if(mode==='upload'){const directory=root.querySelector(`[data-upload-dir="${safe}"]`)?.value.trim();const file=root.querySelector(`[data-upload-file="${safe}"]`)?.files?.[0];if(!directory)throw new Error('请填写上传目录');if(file&&upload)await uploadTemplateFile(directory,file);values[id]=file?joinPath(directory,file.name):'';}else{values[id]=root.querySelector(`[data-file-path="${safe}"]`)?.value||'';}}root.querySelectorAll('[data-field]').forEach(x=>{if(values[x.dataset.field]!==undefined)return;if(x.type==='radio'&&!x.checked)return;if(x.type==='checkbox')values[x.dataset.field]=x.checked;else if(x.multiple)values[x.dataset.field]=Array.from(x.selectedOptions).map(o=>o.value).join(',');else values[x.dataset.field]=x.type==='number'?Number(x.value):x.value;});return values;}
   async function request(id){const modal=App.modal({title:'申请使用模板',content:'<label class="tpl-block-label">申请理由<textarea id="requestReason" placeholder="请说明研究场景和使用目的"></textarea></label>',onSubmit:async()=>{await api('/job-templates/'+id+'/access-requests',{method:'POST',body:JSON.stringify({reason:$('#requestReason',modal.el).value})});App.toast('授权申请已提交','success');load();}});}
   async function grantTemplate(id) {
     const [item, usersData, teamsData] = await Promise.all([
@@ -546,22 +1000,8 @@
       syncBatchExport();
     }
   });
-  document.querySelectorAll('.tpl-tabs button').forEach(btn=>btn.onclick=()=>{
-    document.querySelectorAll('.tpl-tabs button').forEach(x=>x.classList.remove('active'));
-    btn.classList.add('active');
-    state.view=btn.dataset.view;
-    state.selected.clear();
-    const manage=state.view==='manage';
-    const requests=state.view==='requests';
-    $('#templatePageTitle').textContent=manage?'模板管理':requests?'授权审批':'应用广场';
-    $('#templatePageDescription').textContent=manage?'维护草稿、授权范围和发布状态；已发布模板需先取消发布后才能设计。':requests?'审批用户对应用模板的使用申请。':'选择已发布并获得授权的应用模板，填写参数后直接提交作业。';
-    $('#managerActions').hidden=!state.canManage||!manage;
-    $('#templateFilters').hidden=requests;
-    $('#templateStatus').hidden=!manage;
-    $('#templateViewSwitch').hidden=!manage;
-    $('#batchExportTemplates').hidden=!manage||state.layout!=='list';
-    render();
-  });
+  document.querySelectorAll('.tpl-tabs button').forEach(btn=>btn.onclick=()=>setTemplateView(btn.dataset.view,{writeURL:true}));
+  window.addEventListener('popstate',()=>setTemplateView(initialTemplateView(),{writeURL:false}));
   $('#templateSearch').oninput=render;
   ['templateCategory','templateKind','templateStatus'].forEach(id=>$('#'+id).onchange=render);
   $('#newTemplate').onclick=()=>edit(0);

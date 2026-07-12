@@ -20,6 +20,7 @@ import (
 var (
 	templateVariablePattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]{0,63}$`)
 	safeSlurmValuePattern   = regexp.MustCompile(`^[A-Za-z0-9._:/+-]+$`)
+	slurmOptionPattern      = regexp.MustCompile(`^--[A-Za-z][A-Za-z0-9-]{0,63}$`)
 	linuxUsernamePattern    = regexp.MustCompile(`^[a-z_][a-z0-9_-]{0,31}$`)
 )
 
@@ -36,7 +37,11 @@ type TemplateField struct {
 	ID          string           `json:"id"`
 	Type        string           `json:"type"`
 	Label       string           `json:"label"`
+	Control     string           `json:"control,omitempty"`
 	Variable    string           `json:"variable"`
+	SlurmOption string           `json:"slurmOption,omitempty"`
+	DataSource  string           `json:"dataSource,omitempty"`
+	OptionMode  string           `json:"optionMode,omitempty"`
 	Required    bool             `json:"required,omitempty"`
 	Default     any              `json:"default,omitempty"`
 	Placeholder string           `json:"placeholder,omitempty"`
@@ -198,9 +203,33 @@ func (s *Services) templateRenderValuesWithProject(ctx context.Context, user Aut
 		}
 	}
 	if account != "" {
+		if s.templateAccountAuthorizedBySlurm(ctx, user, account) {
+			out["account"] = account
+			return out, templateProjectSelection{Account: account}, nil
+		}
 		return nil, templateProjectSelection{}, errors.New("当前账号无权使用该 Slurm Account")
 	}
 	return out, templateProjectSelection{}, nil
+}
+
+func (s *Services) templateAccountAuthorizedBySlurm(ctx context.Context, user AuthUser, account string) bool {
+	account = strings.TrimSpace(account)
+	if account == "" || s.Slurm == nil {
+		return false
+	}
+	if user.Type == "admin" || IsTemplateManager(user) {
+		return true
+	}
+	associations, err := s.Slurm.Associations(ctx)
+	if err != nil {
+		return false
+	}
+	for _, item := range associations {
+		if strings.TrimSpace(item.User) == user.Username && strings.TrimSpace(item.Account) == account {
+			return true
+		}
+	}
+	return false
 }
 
 func anyInt64(value any) int64 {
@@ -381,6 +410,9 @@ func ValidateTemplate(t JobTemplate) error {
 		if !templateVariablePattern.MatchString(field.Variable) || seenVariable[field.Variable] {
 			return fmt.Errorf("环境变量 %q 不合法或重复", field.Variable)
 		}
+		if strings.TrimSpace(field.SlurmOption) != "" && !slurmOptionPattern.MatchString(strings.TrimSpace(field.SlurmOption)) {
+			return fmt.Errorf("Slurm 参数 %q 不合法", field.SlurmOption)
+		}
 		if field.Min != nil && field.Max != nil && *field.Min > *field.Max {
 			return fmt.Errorf("字段 %s 的最小值不能大于最大值", field.Label)
 		}
@@ -393,12 +425,84 @@ func shellQuote(value string) string {
 	return "'" + strings.ReplaceAll(value, "'", "'\"'\"'") + "'"
 }
 
-func RenderTemplateScript(t JobTemplate, values map[string]any) (string, error) {
-	if err := ValidateTemplate(t); err != nil {
-		return "", err
+func templateFieldControl(field TemplateField) string {
+	if strings.TrimSpace(field.Control) != "" {
+		return strings.TrimSpace(field.Control)
 	}
-	var body strings.Builder
-	body.WriteString("#!/bin/bash\n")
+	switch field.Type {
+	case "textarea":
+		return "textarea"
+	case "number", "cpu", "gpu":
+		return "number"
+	case "select", "partition":
+		return "select"
+	case "radio":
+		return "radio"
+	case "multiselect":
+		return "multiselect"
+	case "checkbox":
+		return "checkbox"
+	case "date":
+		return "date"
+	case "time":
+		return "time"
+	case "slider":
+		return "slider"
+	case "file":
+		return "file"
+	case "directory":
+		return "directory"
+	default:
+		return "text"
+	}
+}
+
+func templateFieldIsNumeric(field TemplateField) bool {
+	switch templateFieldControl(field) {
+	case "number", "slider":
+		return true
+	default:
+		return field.Type == "number" || field.Type == "cpu" || field.Type == "gpu"
+	}
+}
+
+func templateHasSlurmFields(t JobTemplate) bool {
+	for _, field := range t.FormSchema {
+		if strings.TrimSpace(field.SlurmOption) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func templateFieldValue(field TemplateField, values map[string]any) string {
+	value, ok := values[field.ID]
+	if (!ok || value == nil || valueString(value, "") == "") && field.SlurmOption == "--account" {
+		value, ok = values["account"]
+	}
+	if !ok || value == nil || valueString(value, "") == "" {
+		value = field.Default
+	}
+	return valueString(value, "")
+}
+
+func validateSlurmDirectiveValue(option, value string) error {
+	if value == "" {
+		return nil
+	}
+	if len(value) > 512 || strings.ContainsAny(value, "\r\n\x00") {
+		return fmt.Errorf("%s 包含不安全字符", option)
+	}
+	if strings.Contains(value, "`") || strings.Contains(value, "$(") {
+		return fmt.Errorf("%s 包含不安全字符", option)
+	}
+	if option == "--chdir" && !strings.HasPrefix(value, "/") {
+		return errors.New("工作目录必须是绝对路径")
+	}
+	return nil
+}
+
+func writeLegacyTemplateDirectives(body *strings.Builder, t JobTemplate, values map[string]any) error {
 	defaultJobName := "simplehpc-job"
 	if t.ID > 0 {
 		defaultJobName = "simplehpc-template-" + strconv.FormatInt(t.ID, 10)
@@ -414,7 +518,7 @@ func RenderTemplateScript(t JobTemplate, values map[string]any) (string, error) 
 			continue
 		}
 		if !safeSlurmValuePattern.MatchString(value) {
-			return "", fmt.Errorf("%s 包含不安全字符", item.key)
+			return fmt.Errorf("%s 包含不安全字符", item.key)
 		}
 		body.WriteString("#SBATCH " + flags[item.key] + "=" + value + "\n")
 	}
@@ -422,9 +526,73 @@ func RenderTemplateScript(t JobTemplate, values map[string]any) (string, error) 
 	body.WriteString("#SBATCH --error=slurm-%j.err\n")
 	if workdir := valueString(values["workdir"], ""); workdir != "" {
 		if !strings.HasPrefix(workdir, "/") || strings.Contains(workdir, "\n") {
-			return "", errors.New("工作目录必须是绝对路径")
+			return errors.New("工作目录必须是绝对路径")
 		}
 		body.WriteString("#SBATCH --chdir=" + workdir + "\n")
+	}
+	return nil
+}
+
+func writeTemplateSlurmDirectives(body *strings.Builder, t JobTemplate, values map[string]any) error {
+	seen := map[string]bool{}
+	for _, field := range t.FormSchema {
+		option := strings.TrimSpace(field.SlurmOption)
+		if option == "" || isTemplateDisplayField(field.Type) {
+			continue
+		}
+		value := templateFieldValue(field, values)
+		if field.Required && value == "" {
+			return fmt.Errorf("%s 为必填项", field.Label)
+		}
+		if templateFieldIsNumeric(field) && value != "" {
+			number, err := strconv.ParseFloat(value, 64)
+			if err != nil {
+				return fmt.Errorf("%s 必须是数字", field.Label)
+			}
+			if field.Min != nil && number < *field.Min || field.Max != nil && number > *field.Max {
+				return fmt.Errorf("%s 超出允许范围", field.Label)
+			}
+		}
+		if templateFieldControl(field) == "checkbox" {
+			if value != "true" {
+				continue
+			}
+			body.WriteString("#SBATCH " + option + "\n")
+			seen[option] = true
+			continue
+		}
+		if value == "" || (option == "--gpus" || option == "--gpus-per-node") && value == "0" {
+			continue
+		}
+		if err := validateSlurmDirectiveValue(option, value); err != nil {
+			return err
+		}
+		body.WriteString("#SBATCH " + option + "=" + value + "\n")
+		seen[option] = true
+	}
+	if !seen["--output"] {
+		body.WriteString("#SBATCH --output=slurm-%j.out\n")
+	}
+	if !seen["--error"] {
+		body.WriteString("#SBATCH --error=slurm-%j.err\n")
+	}
+	return nil
+}
+
+func RenderTemplateScript(t JobTemplate, values map[string]any) (string, error) {
+	if err := ValidateTemplate(t); err != nil {
+		return "", err
+	}
+	var body strings.Builder
+	body.WriteString("#!/bin/bash\n")
+	if templateHasSlurmFields(t) {
+		if err := writeTemplateSlurmDirectives(&body, t, values); err != nil {
+			return "", err
+		}
+	} else {
+		if err := writeLegacyTemplateDirectives(&body, t, values); err != nil {
+			return "", err
+		}
 	}
 	body.WriteString("\nset -euo pipefail\n")
 	for _, key := range []string{"SIMPLEHPC_RUN_TOKEN", "SIMPLEHPC_ACCESS_TOKEN", "SIMPLEHPC_CALLBACK_URL", "SIMPLEHPC_SUBMIT_USER"} {
@@ -436,15 +604,11 @@ func RenderTemplateScript(t JobTemplate, values map[string]any) (string, error) 
 		if isTemplateDisplayField(field.Type) {
 			continue
 		}
-		value, ok := values[field.ID]
-		if !ok || value == nil || valueString(value, "") == "" {
-			value = field.Default
-		}
-		text := valueString(value, "")
+		text := templateFieldValue(field, values)
 		if field.Required && text == "" {
 			return "", fmt.Errorf("%s 为必填项", field.Label)
 		}
-		if (field.Type == "number" || field.Type == "cpu" || field.Type == "gpu" || field.Type == "slider") && text != "" {
+		if templateFieldIsNumeric(field) && text != "" {
 			number, err := strconv.ParseFloat(text, 64)
 			if err != nil {
 				return "", fmt.Errorf("%s 必须是数字", field.Label)

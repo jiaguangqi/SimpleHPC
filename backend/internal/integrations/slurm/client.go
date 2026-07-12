@@ -53,19 +53,23 @@ type Job struct {
 }
 
 type HistoricalJob struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	User      string `json:"user"`
-	Partition string `json:"partition"`
-	Account   string `json:"account"`
-	Nodes     string `json:"nodes"`
-	CPUs      string `json:"cpus"`
-	State     string `json:"state"`
-	Elapsed   string `json:"elapsed"`
-	Submit    string `json:"submit"`
-	Start     string `json:"start"`
-	End       string `json:"end"`
-	NodeList  string `json:"nodeList,omitempty"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	User           string `json:"user"`
+	Partition      string `json:"partition"`
+	Account        string `json:"account"`
+	Nodes          string `json:"nodes"`
+	CPUs           string `json:"cpus"`
+	GPUs           string `json:"gpus"`
+	AllocTRES      string `json:"allocTres"`
+	State          string `json:"state"`
+	Elapsed        string `json:"elapsed"`
+	ElapsedSeconds int64  `json:"elapsedSeconds"`
+	CPUTimeSeconds int64  `json:"cpuTimeSeconds"`
+	Submit         string `json:"submit"`
+	Start          string `json:"start"`
+	End            string `json:"end"`
+	NodeList       string `json:"nodeList,omitempty"`
 }
 
 type JobDetail struct {
@@ -129,11 +133,12 @@ type QOS struct {
 }
 
 type Association struct {
-	User       string `json:"user"`
-	Account    string `json:"account"`
-	Partition  string `json:"partition"`
-	QOS        string `json:"qos"`
-	DefaultQOS string `json:"defaultQos"`
+	User           string `json:"user"`
+	Account        string `json:"account"`
+	Partition      string `json:"partition"`
+	QOS            string `json:"qos"`
+	DefaultQOS     string `json:"defaultQos"`
+	DefaultAccount string `json:"defaultAccount"`
 }
 
 type Account struct {
@@ -291,6 +296,28 @@ func gpuCountFromGRES(value string) string {
 	return strconv.Itoa(total)
 }
 
+func gpuCountFromTRES(value string) string {
+	total := 0
+	for _, token := range strings.Split(value, ",") {
+		parts := strings.SplitN(strings.TrimSpace(token), "=", 2)
+		if len(parts) != 2 || !strings.Contains(strings.ToLower(parts[0]), "gpu") {
+			continue
+		}
+		if count, err := strconv.Atoi(strings.TrimSpace(parts[1])); err == nil && count > 0 {
+			total += count
+		}
+	}
+	return strconv.Itoa(total)
+}
+
+func parseAccountingSeconds(value string) int64 {
+	seconds, err := strconv.ParseInt(strings.TrimSpace(value), 10, 64)
+	if err != nil || seconds < 0 {
+		return 0
+	}
+	return seconds
+}
+
 func leadingInteger(value string) int {
 	end := 0
 	for end < len(value) && value[end] >= '0' && value[end] <= '9' {
@@ -307,18 +334,19 @@ func (c *Client) History(ctx context.Context, since string) ([]HistoricalJob, er
 	if since == "" {
 		since = "today"
 	}
-	out, err := c.run(ctx, "sacct", "-S", since, "--parsable2", "--noheader", "-X", "--format=JobID,JobName,User,Partition,Account,NNodes,AllocCPUS,State,Elapsed,Submit,Start,End,NodeList")
+	out, err := c.run(ctx, "sacct", "-S", since, "--parsable2", "--noheader", "-X", "--format=JobID,JobName,User,Partition,Account,NNodes,AllocCPUS,AllocTRES,State,Elapsed,ElapsedRaw,CPUTimeRAW,Submit,Start,End,NodeList")
 	if err != nil {
 		return nil, err
 	}
 	rows := splitLines(out)
 	jobs := make([]HistoricalJob, 0, len(rows))
 	for _, row := range rows {
-		cols := splitRow(row, 13)
+		cols := splitRow(row, 16)
 		jobs = append(jobs, HistoricalJob{
 			ID: cols[0], Name: cols[1], User: cols[2], Partition: cols[3], Account: cols[4],
-			Nodes: cols[5], CPUs: cols[6], State: cols[7], Elapsed: cols[8],
-			Submit: cols[9], Start: cols[10], End: cols[11], NodeList: cols[12],
+			Nodes: cols[5], CPUs: cols[6], GPUs: gpuCountFromTRES(cols[7]), AllocTRES: cols[7],
+			State: cols[8], Elapsed: cols[9], ElapsedSeconds: parseAccountingSeconds(cols[10]), CPUTimeSeconds: parseAccountingSeconds(cols[11]),
+			Submit: cols[12], Start: cols[13], End: cols[14], NodeList: cols[15],
 		})
 	}
 	return jobs, nil
@@ -446,14 +474,14 @@ func (c *Client) QOS(ctx context.Context) ([]QOS, error) {
 }
 
 func (c *Client) Associations(ctx context.Context) ([]Association, error) {
-	out, err := c.run(ctx, "sacctmgr", "-n", "-P", "show", "user", "withassoc", "format=User,Account,Partition,QOS,DefaultQOS")
+	out, err := c.run(ctx, "sacctmgr", "-n", "-P", "show", "user", "withassoc", "format=User,Account,Partition,QOS,DefaultQOS,DefaultAccount")
 	if err != nil {
 		return nil, err
 	}
 	items := make([]Association, 0)
 	for _, row := range splitLines(out) {
-		cols := splitRow(row, 5)
-		items = append(items, Association{User: cols[0], Account: cols[1], Partition: cols[2], QOS: cols[3], DefaultQOS: cols[4]})
+		cols := splitRow(row, 6)
+		items = append(items, Association{User: cols[0], Account: cols[1], Partition: cols[2], QOS: cols[3], DefaultQOS: cols[4], DefaultAccount: cols[5]})
 	}
 	return items, nil
 }

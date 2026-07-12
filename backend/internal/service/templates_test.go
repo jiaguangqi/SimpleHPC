@@ -154,6 +154,78 @@ func TestRenderTemplateScriptExportsReservedRuntimeValues(t *testing.T) {
 	}
 }
 
+func TestRenderTemplateScriptUsesComponentSlurmOptions(t *testing.T) {
+	tpl := JobTemplate{
+		Name: "component slurm", Kind: "batch", ScriptTemplate: "python train.py --input \"$INPUT_FILE\"",
+		FormSchema: []TemplateField{
+			{ID: "job", Type: "slurm-job-name", Label: "作业名称", Control: "text", Variable: "JOB_NAME", SlurmOption: "--job-name", Required: true},
+			{ID: "account", Type: "slurm-account", Label: "项目名称", Control: "project", Variable: "PROJECT_ACCOUNT", SlurmOption: "--account", Required: true},
+			{ID: "nodes", Type: "slurm-nodes", Label: "节点数", Control: "number", Variable: "NODE_COUNT", SlurmOption: "--nodes", Min: floatPtr(1), Max: floatPtr(64)},
+			{ID: "gpu_per_node", Type: "slurm-gpus-per-node", Label: "每节点 GPU", Control: "number", Variable: "GPU_PER_NODE", SlurmOption: "--gpus-per-node", Min: floatPtr(0), Max: floatPtr(8)},
+			{ID: "mail", Type: "slurm-mail-user", Label: "通知邮箱", Control: "text", Variable: "MAIL_USER", SlurmOption: "--mail-user"},
+			{ID: "input", Type: "app-file", Label: "输入文件", Control: "file", Variable: "INPUT_FILE", Required: true},
+		},
+	}
+	script, err := RenderTemplateScript(tpl, map[string]any{
+		"job":          "ansys-run-01",
+		"account":      "demo-cfd",
+		"nodes":        2,
+		"gpu_per_node": 1,
+		"mail":         "user@example.com",
+		"input":        "/data/home/user/model.dat",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{
+		"#SBATCH --job-name=ansys-run-01",
+		"#SBATCH --account=demo-cfd",
+		"#SBATCH --nodes=2",
+		"#SBATCH --gpus-per-node=1",
+		"#SBATCH --mail-user=user@example.com",
+		"export PROJECT_ACCOUNT='demo-cfd'",
+		"export INPUT_FILE='/data/home/user/model.dat'",
+	} {
+		if !strings.Contains(script, expected) {
+			t.Fatalf("script missing %q:\n%s", expected, script)
+		}
+	}
+}
+
+func TestRenderTemplateScriptUsesValidatedProjectAccountFallback(t *testing.T) {
+	tpl := JobTemplate{
+		Name: "account fallback", Kind: "batch", ScriptTemplate: "true",
+		FormSchema: []TemplateField{{ID: "project", Type: "slurm-account", Label: "项目", Control: "project", Variable: "PROJECT_ACCOUNT", SlurmOption: "--account", Required: true}},
+	}
+	script, err := RenderTemplateScript(tpl, map[string]any{"account": "default-project"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(script, "#SBATCH --account=default-project") || !strings.Contains(script, "export PROJECT_ACCOUNT='default-project'") {
+		t.Fatalf("script did not use account fallback:\n%s", script)
+	}
+}
+
+func TestRenderTemplateScriptRejectsUnsafeDynamicSlurmValue(t *testing.T) {
+	tpl := JobTemplate{
+		Name: "unsafe slurm", Kind: "batch", ScriptTemplate: "true",
+		FormSchema: []TemplateField{{ID: "job", Type: "slurm-job-name", Label: "作业名称", Control: "text", Variable: "JOB_NAME", SlurmOption: "--job-name"}},
+	}
+	if _, err := RenderTemplateScript(tpl, map[string]any{"job": "good\n#SBATCH --nodes=999"}); err == nil {
+		t.Fatal("RenderTemplateScript accepted a newline in a Slurm directive value")
+	}
+}
+
+func TestValidateTemplateRejectsUnsafeSlurmOption(t *testing.T) {
+	tpl := JobTemplate{
+		Name: "unsafe option", Kind: "batch", ScriptTemplate: "true",
+		FormSchema: []TemplateField{{ID: "custom", Type: "slurm-custom", Label: "参数", Control: "text", Variable: "CUSTOM", SlurmOption: "--comment;rm"}},
+	}
+	if err := ValidateTemplate(tpl); err == nil {
+		t.Fatal("ValidateTemplate accepted an unsafe Slurm option")
+	}
+}
+
 func TestRenderTemplateScriptUsesSafeDefaultJobNameForChineseTemplate(t *testing.T) {
 	item := JobTemplate{
 		ID:             42,

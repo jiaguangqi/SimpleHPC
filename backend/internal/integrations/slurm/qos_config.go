@@ -138,5 +138,12 @@ func uniqueValidNames(values []string) []string {
 }
 
 func isNothingAdded(err error) bool {
-	return err != nil && strings.Contains(strings.ToLower(err.Error()), "nothing new added")
+	if err == nil {
+		return false
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "nothing new added") ||
+		strings.Contains(message, "nothing added") ||
+		strings.Contains(message, "already existing account") ||
+		strings.Contains(message, "account already exists")
 }

@@ -56,10 +56,10 @@ func TestEmbeddedRBACMigrationsAreComplete(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(items) != 15 {
-		t.Fatalf("embedded migrations = %d, want 15", len(items))
+	if len(items) != 16 {
+		t.Fatalf("embedded migrations = %d, want 16", len(items))
 	}
-	for index, version := range []int64{2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16} {
+	for index, version := range []int64{2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17} {
 		if items[index].Version != version || len(items[index].Body) == 0 || items[index].Checksum == "" {
 			t.Fatalf("invalid embedded migration: %#v", items[index])
 		}

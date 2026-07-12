@@ -49,6 +49,7 @@ type ProjectRecord struct {
 	CurrentUserRole     string             `json:"currentUserRole,omitempty"`
 	CurrentUserAccess   string             `json:"currentUserAccess,omitempty"`
 	CurrentUserDefault  bool               `json:"currentUserDefaultProject,omitempty"`
+	CanManage           bool               `json:"canManage"`
 	CreatedBy           string             `json:"createdBy,omitempty"`
 	UpdatedBy           string             `json:"updatedBy,omitempty"`
 	CreatedAt           string             `json:"createdAt,omitempty"`
@@ -67,7 +68,12 @@ type ProjectMetrics struct {
 	DirectoryCount    int     `json:"directoryCount"`
 	JobCount          int     `json:"jobCount"`
 	RunningJobCount   int     `json:"runningJobCount"`
+	PendingJobCount   int     `json:"pendingJobCount"`
 	CompletedJobCount int     `json:"completedJobCount"`
+	FailedJobCount    int     `json:"failedJobCount"`
+	ElapsedHours      float64 `json:"elapsedHours"`
+	AllocatedCPUHours float64 `json:"allocatedCpuHours"`
+	AllocatedGPUHours float64 `json:"allocatedGpuHours"`
 	LicenseUsed       int     `json:"licenseUsed"`
 	ProgressPercent   float64 `json:"progressPercent"`
 }
@@ -418,7 +424,9 @@ p.status,p.priority,p.start_date,p.end_date,p.storage_quota_gb,p.compute_quota_h
 p.tags,p.created_by,p.updated_by,p.created_at,p.updated_at,
 COALESCE(m.member_count,0),COALESCE(task.task_count,0),COALESCE(task.done_task_count,0),
 COALESCE(dir.directory_count,0),COALESCE(job.job_count,0),COALESCE(job.running_job_count,0),
-COALESCE(job.completed_job_count,0),COALESCE(me.role,''),COALESCE(me.permission,''),COALESCE(me.default_project,false)
+COALESCE(job.pending_job_count,0),COALESCE(job.completed_job_count,0),COALESCE(job.failed_job_count,0),
+COALESCE(job.elapsed_hours,0),COALESCE(job.allocated_cpu_hours,0),COALESCE(job.allocated_gpu_hours,0),
+COALESCE(me.role,''),COALESCE(me.permission,''),COALESCE(me.default_project,false)
 FROM projects p
 LEFT JOIN platform_users owner ON owner.username=p.owner_username
 LEFT JOIN units u ON u.id=p.unit_id
@@ -427,14 +435,30 @@ LEFT JOIN (SELECT project_id,COUNT(*) member_count FROM project_members WHERE st
 LEFT JOIN (SELECT project_id,COUNT(*) task_count,COUNT(*) FILTER (WHERE status='done') done_task_count FROM project_tasks GROUP BY project_id) task ON task.project_id=p.id
 LEFT JOIN (SELECT project_id,COUNT(*) directory_count FROM project_directories WHERE status='active' GROUP BY project_id) dir ON dir.project_id=p.id
 LEFT JOIN (
-  SELECT p2.id project_id,
-         COUNT(DISTINCT COALESCE(sj.job_id,pjl.job_id)) job_count,
-         COUNT(DISTINCT COALESCE(sj.job_id,pjl.job_id)) FILTER (WHERE upper(COALESCE(sj.state,pjl.state)) IN ('RUNNING','R','运行中')) running_job_count,
-         COUNT(DISTINCT COALESCE(sj.job_id,pjl.job_id)) FILTER (WHERE upper(COALESCE(sj.state,pjl.state)) IN ('COMPLETED','CD','DONE','完成')) completed_job_count
-  FROM projects p2
-  LEFT JOIN project_job_links pjl ON pjl.project_id=p2.id
-  LEFT JOIN slurm_jobs sj ON sj.account=COALESCE(NULLIF(p2.slurm_account,''),p2.code) OR sj.job_id=pjl.job_id
-  GROUP BY p2.id
+  SELECT project_id,
+         COUNT(*) job_count,
+         COUNT(*) FILTER (WHERE upper(state) IN ('RUNNING','R','运行中')) running_job_count,
+         COUNT(*) FILTER (WHERE upper(state) IN ('PENDING','PD','排队中')) pending_job_count,
+         COUNT(*) FILTER (WHERE upper(state) IN ('COMPLETED','CD','DONE','完成')) completed_job_count,
+         COUNT(*) FILTER (WHERE upper(state) IN ('FAILED','F','CANCELLED','CA','TIMEOUT','TO','NODE_FAIL','NF','OUT_OF_MEMORY','OOM')) failed_job_count,
+         ROUND(SUM(elapsed_seconds)::numeric / 3600, 2) elapsed_hours,
+         ROUND(SUM(cpu_time_seconds)::numeric / 3600, 2) allocated_cpu_hours,
+         ROUND(SUM(gpu_count * elapsed_seconds)::numeric / 3600, 2) allocated_gpu_hours
+  FROM (
+    SELECT DISTINCT ON (project_id,job_id)
+           project_id,job_id,state,elapsed_seconds,cpu_time_seconds,gpu_count
+    FROM (
+      SELECT p2.id project_id,sj.job_id,sj.state,sj.elapsed_seconds,sj.cpu_time_seconds,sj.gpu_count,1 source_rank
+      FROM projects p2
+      JOIN slurm_jobs sj ON sj.account=COALESCE(NULLIF(p2.slurm_account,''),p2.code) AND sj.account<>''
+      UNION ALL
+      SELECT pjl.project_id,pjl.job_id,COALESCE(sj.state,pjl.state),COALESCE(sj.elapsed_seconds,0),COALESCE(sj.cpu_time_seconds,0),COALESCE(sj.gpu_count,0),2 source_rank
+      FROM project_job_links pjl
+      LEFT JOIN slurm_jobs sj ON sj.job_id=pjl.job_id
+    ) project_jobs_raw
+    ORDER BY project_id,job_id,source_rank
+  ) project_jobs
+  GROUP BY project_id
 ) job ON job.project_id=p.id
 LEFT JOIN project_members me ON me.project_id=p.id AND me.username=$1 AND me.status='active'
 WHERE `+strings.Join(where, " AND ")+`
@@ -450,6 +474,7 @@ ORDER BY CASE p.status WHEN 'active' THEN 1 WHEN 'planning' THEN 2 WHEN 'paused'
 		if err != nil {
 			return ProjectListResponse{}, err
 		}
+		item.CanManage = query.CanManageAll || item.OwnerUsername == query.Username || item.CurrentUserAccess == "manage"
 		items = append(items, item)
 		summary.Total++
 		if item.Status == "active" {
@@ -488,7 +513,9 @@ func scanProjectRecord(row interface{ Scan(dest ...any) error }) (ProjectRecord,
 		&tagsRaw, &item.CreatedBy, &item.UpdatedBy, &createdAt, &updatedAt,
 		&item.Metrics.MemberCount, &item.Metrics.TaskCount, &item.Metrics.DoneTaskCount,
 		&item.Metrics.DirectoryCount, &item.Metrics.JobCount, &item.Metrics.RunningJobCount,
-		&item.Metrics.CompletedJobCount, &item.CurrentUserRole, &item.CurrentUserAccess, &item.CurrentUserDefault)
+		&item.Metrics.PendingJobCount, &item.Metrics.CompletedJobCount, &item.Metrics.FailedJobCount,
+		&item.Metrics.ElapsedHours, &item.Metrics.AllocatedCPUHours, &item.Metrics.AllocatedGPUHours,
+		&item.CurrentUserRole, &item.CurrentUserAccess, &item.CurrentUserDefault)
 	if err != nil {
 		return item, err
 	}
@@ -651,6 +678,29 @@ func (s *Services) ProjectAccess(ctx context.Context, projectID int64, username 
 	return role, permission, nil
 }
 
+func (s *Services) ProjectJobAccount(ctx context.Context, projectID int64, username string, canManageAll bool) (string, error) {
+	if _, _, err := s.ProjectAccess(ctx, projectID, username, canManageAll); err != nil {
+		return "", err
+	}
+	var account string
+	if err := s.DB.QueryRowContext(ctx, `SELECT COALESCE(NULLIF(slurm_account,''),code) FROM projects WHERE id=$1`, projectID).Scan(&account); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(account), nil
+}
+
+func (s *Services) ProjectJobAccessByAccount(ctx context.Context, account string, username string, canManageAll bool) (string, string, error) {
+	account = strings.TrimSpace(account)
+	if account == "" {
+		return "", "", sql.ErrNoRows
+	}
+	var projectID int64
+	if err := s.DB.QueryRowContext(ctx, `SELECT id FROM projects WHERE COALESCE(NULLIF(slurm_account,''),code)=$1`, account).Scan(&projectID); err != nil {
+		return "", "", err
+	}
+	return s.ProjectAccess(ctx, projectID, username, canManageAll)
+}
+
 func (s *Services) SyncProjectSlurmAccount(ctx context.Context, projectID int64, actor string) error {
 	if s.DB == nil {
 		return errors.New("数据库未配置")
@@ -704,12 +754,65 @@ func (s *Services) SyncProjectSlurmAccount(ctx context.Context, projectID int64,
 		}
 		applied++
 	}
-	message := fmt.Sprintf("已同步 Slurm Account %s，关联 %d 个成员", account, applied)
+	associations, err := s.Slurm.Associations(ctx)
+	if err != nil {
+		message := safeProjectSyncMessage(fmt.Errorf("读取 Slurm 用户关联失败: %w", err))
+		_ = s.updateProjectSlurmStatus(ctx, projectID, "error", message)
+		return errors.New(message)
+	}
+	revoked := 0
+	for _, association := range staleProjectAssociations(account, members, associations) {
+		if association.DefaultAccount == account {
+			fallback := strings.TrimSpace(s.Slurm.DefaultAccount)
+			if fallback == "" || fallback == account {
+				message := fmt.Sprintf("用户 %s 的默认 Account 仍为 %s，无法安全撤销关联", association.User, account)
+				_ = s.updateProjectSlurmStatus(ctx, projectID, "error", message)
+				return errors.New(message)
+			}
+			if err := s.Slurm.EnsureUserAccountAssociation(ctx, fallback, association.User, "", true); err != nil {
+				message := safeProjectSyncMessage(fmt.Errorf("恢复用户 %s 的默认 Account 失败: %w", association.User, err))
+				_ = s.updateProjectSlurmStatus(ctx, projectID, "error", message)
+				return errors.New(message)
+			}
+		}
+		if err := s.Slurm.RemoveUserAccountAssociation(ctx, account, association.User); err != nil {
+			message := safeProjectSyncMessage(err)
+			_ = s.updateProjectSlurmStatus(ctx, projectID, "error", message)
+			return errors.New(message)
+		}
+		revoked++
+	}
+	message := fmt.Sprintf("已同步 Slurm Account %s，关联 %d 个成员，回收 %d 个过期关联", account, applied, revoked)
 	if err := s.updateProjectSlurmStatus(ctx, projectID, "success", message); err != nil {
 		return err
 	}
 	_ = s.recordProjectActivity(ctx, projectID, actor, "slurm.sync", "slurm_account", account, message, map[string]any{"members": applied})
 	return nil
+}
+
+func staleProjectAssociations(account string, members []ProjectMember, associations []slurmintegration.Association) []slurmintegration.Association {
+	active := make(map[string]struct{}, len(members))
+	for _, member := range members {
+		if member.Status == "active" {
+			active[member.Username] = struct{}{}
+		}
+	}
+	seen := map[string]struct{}{}
+	stale := []slurmintegration.Association{}
+	for _, association := range associations {
+		if strings.TrimSpace(association.Account) != account || strings.TrimSpace(association.User) == "" {
+			continue
+		}
+		if _, ok := active[association.User]; ok {
+			continue
+		}
+		if _, ok := seen[association.User]; ok {
+			continue
+		}
+		seen[association.User] = struct{}{}
+		stale = append(stale, association)
+	}
+	return stale
 }
 
 func (s *Services) projectSlurmConfig(ctx context.Context, projectID int64) (ProjectRecord, error) {
@@ -858,7 +961,14 @@ func (s *Services) DeleteProjectMember(ctx context.Context, projectID int64, use
 	if username == "" {
 		return errors.New("成员账号不能为空")
 	}
-	result, err := s.DB.ExecContext(ctx, `DELETE FROM project_members WHERE project_id=$1 AND username=$2 AND role<>'owner'`, projectID, username)
+	var role string
+	if err := s.DB.QueryRowContext(ctx, `SELECT role FROM project_members WHERE project_id=$1 AND username=$2`, projectID, username).Scan(&role); err != nil {
+		return err
+	}
+	if role == "owner" {
+		return errors.New("项目负责人不能直接移除")
+	}
+	result, err := s.DB.ExecContext(ctx, `DELETE FROM project_members WHERE project_id=$1 AND username=$2`, projectID, username)
 	if err != nil {
 		return err
 	}
@@ -867,7 +977,9 @@ func (s *Services) DeleteProjectMember(ctx context.Context, projectID int64, use
 		return sql.ErrNoRows
 	}
 	_ = s.recordProjectActivity(ctx, projectID, actor, "member.delete", "member", username, "移除项目成员", nil)
-	_ = s.SyncProjectSlurmAccount(ctx, projectID, actor)
+	if err := s.SyncProjectSlurmAccount(ctx, projectID, actor); err != nil {
+		return fmt.Errorf("成员已移除，但 Slurm Account 授权回收失败，请重新同步项目: %w", err)
+	}
 	return nil
 }
 

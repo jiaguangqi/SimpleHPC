@@ -21,8 +21,15 @@
     { code: 'rlmutil', name: 'RLM rlmutil', licenseType: 'RLM', executablePath: 'rlmutil', defaultArgs: 'rlmstat -a -c', collectMethod: 'rlmutil' }
   ];
 
+  const licenseTabs = new Set(['apps', 'managers', 'licenses', 'logs']);
+
+  function licenseTabFromURL() {
+    const tab = new URLSearchParams(location.search).get('tab') || 'apps';
+    return licenseTabs.has(tab) ? tab : 'apps';
+  }
+
   const state = {
-    activeTab: 'licenses',
+    activeTab: licenseTabFromURL(),
     selectedLicenseId: '',
     inlineDraft: null,
     inlineTest: null,
@@ -231,9 +238,24 @@
     $('licenseConfigAbnormal').textContent = abnormal;
   }
 
-  function setTab(tab) {
+  function syncLicenseTabURL(replace) {
+    const url = new URL(location.href);
+    if (state.activeTab === 'apps') url.searchParams.delete('tab');
+    else url.searchParams.set('tab', state.activeTab);
+    const next = url.pathname + url.search + url.hash;
+    const current = location.pathname + location.search + location.hash;
+    if (next === current) return;
+    history[replace ? 'replaceState' : 'pushState']({ licenseTab: state.activeTab }, '', next);
+  }
+
+  function setTab(tab, options) {
+    tab = licenseTabs.has(tab) ? tab : 'apps';
     state.activeTab = tab;
-    document.querySelectorAll('.license-tab').forEach((button) => button.classList.toggle('active', button.dataset.licenseTab === tab));
+    document.querySelectorAll('.license-tab').forEach((button) => {
+      const active = button.dataset.licenseTab === tab;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-selected', String(active));
+    });
     $('licenseAppsPanel').hidden = tab !== 'apps';
     $('licenseManagersPanel').hidden = tab !== 'managers';
     $('licenseServersPanel').hidden = tab !== 'licenses';
@@ -243,6 +265,7 @@
     $('licensePrimaryActionBtn').textContent = primaryText;
     delete $('licensePrimaryActionBtn').dataset.defaultText;
     $('licenseConfigSearch').placeholder = tab === 'apps' ? '搜索应用名称、厂商、分类...' : tab === 'managers' ? '搜索管理器、路径、类型...' : tab === 'logs' ? '搜索应用、采集状态、错误信息...' : '搜索应用、管理器、License Server...';
+    if (options?.writeURL) syncLicenseTabURL(!!options.replace);
     renderAll();
   }
 
@@ -594,7 +617,7 @@
     state.selectedLicenseId = 'new';
     state.inlineDraft = draftForApp(appCode);
     state.inlineTest = null;
-    setTab('licenses');
+    setTab('licenses', { writeURL: true });
     renderConfigs();
     setTimeout(() => $('editorServerHost')?.focus(), 0);
   }
@@ -960,7 +983,7 @@
       state.selectedLicenseId = String(id || '');
       state.inlineDraft = null;
       state.inlineTest = null;
-      setTab('licenses');
+      setTab('licenses', { writeURL: true });
       renderAll();
     }
     if (action === 'license-edit') {
@@ -969,7 +992,7 @@
         state.selectedLicenseId = String(config.id);
         state.inlineDraft = null;
         state.inlineTest = null;
-        setTab('licenses');
+        setTab('licenses', { writeURL: true });
       }
     }
     if (action === 'license-test') testExistingLicense(id).catch((err) => toast(err.message, 'danger'));
@@ -992,7 +1015,7 @@
 
   function bind() {
     document.querySelectorAll('.license-tab').forEach((button) => {
-      button.addEventListener('click', () => setTab(button.dataset.licenseTab));
+      button.addEventListener('click', () => setTab(button.dataset.licenseTab, { writeURL: true }));
     });
     $('licensePrimaryActionBtn').addEventListener('click', () => {
       if (state.activeTab === 'apps') openAppModal();
@@ -1007,11 +1030,12 @@
     $('licenseConfigSearch').addEventListener('input', renderAll);
     $('licenseConfigEnabledFilter').addEventListener('change', renderAll);
     document.addEventListener('click', handleAction);
+    window.addEventListener('popstate', () => setTab(licenseTabFromURL()));
   }
 
   document.addEventListener('DOMContentLoaded', () => {
     bind();
-    setTab('licenses');
+    setTab(licenseTabFromURL(), { writeURL: true, replace: true });
     loadConfigs().catch((err) => toast('License 配置未获取：' + err.message, 'danger'));
   });
 })();

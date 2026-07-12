@@ -604,3 +604,42 @@ body.shpc-sample-page .empty-state {
     transform: none !important;
   }
 }
+
+/* Align sample pages with the shared engineering-console visual language. */
+body.shpc-dashboard-page .card,
+body.shpc-dashboard-page .stat-card,
+body.shpc-dashboard-page .table-wrap,
+body.shpc-rbac-page .card,
+body.shpc-rbac-page .stat-card,
+body.shpc-rbac-page .table-wrap,
+.shpc-rbac-page .rbac-hero,
+.shpc-rbac-page .rbac-hero-rule {
+  border-color: var(--border);
+  border-radius: var(--shpc-panel-radius, 8px);
+  background: #fff;
+  box-shadow: var(--shpc-panel-shadow, 0 1px 2px rgba(16, 24, 40, .04));
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+body.shpc-sample-page .btn,
+body.shpc-sample-page .btn-icon,
+body.shpc-sample-page button {
+  border-radius: var(--shpc-control-radius, 8px);
+  font-family: var(--font-body);
+  letter-spacing: 0;
+}
+
+body.shpc-sample-page .btn-primary,
+body.shpc-sample-page button.btn-primary {
+  border-color: var(--shpc-brand-action, #23699a);
+  background: var(--shpc-brand-action, #23699a);
+  box-shadow: none;
+}
+
+body.shpc-sample-page .btn-primary:hover,
+body.shpc-sample-page button.btn-primary:hover {
+  border-color: var(--shpc-brand-action-hover, #184f76);
+  background: var(--shpc-brand-action-hover, #184f76);
+  box-shadow: none;
+}

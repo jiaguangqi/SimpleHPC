@@ -30,22 +30,25 @@ type Services struct {
 }
 
 type SyncedJob struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	User      string `json:"user"`
-	Account   string `json:"account"`
-	ProjectID int64  `json:"projectId,omitempty"`
-	Project   string `json:"project,omitempty"`
-	Partition string `json:"partition"`
-	State     string `json:"state"`
-	Nodes     string `json:"nodes"`
-	CPUs      string `json:"cpus"`
-	GPUs      string `json:"gpus"`
-	Time      string `json:"time"`
-	Submit    string `json:"submit,omitempty"`
-	NodeList  string `json:"nodeList,omitempty"`
-	Source    string `json:"source,omitempty"`
-	SyncedAt  string `json:"syncedAt,omitempty"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	User           string `json:"user"`
+	Account        string `json:"account"`
+	ProjectID      int64  `json:"projectId,omitempty"`
+	Project        string `json:"project,omitempty"`
+	Partition      string `json:"partition"`
+	State          string `json:"state"`
+	Nodes          string `json:"nodes"`
+	CPUs           string `json:"cpus"`
+	GPUs           string `json:"gpus"`
+	Time           string `json:"time"`
+	ElapsedSeconds int64  `json:"elapsedSeconds,omitempty"`
+	CPUTimeSeconds int64  `json:"cpuTimeSeconds,omitempty"`
+	AllocTRES      string `json:"allocTres,omitempty"`
+	Submit         string `json:"submit,omitempty"`
+	NodeList       string `json:"nodeList,omitempty"`
+	Source         string `json:"source,omitempty"`
+	SyncedAt       string `json:"syncedAt,omitempty"`
 }
 
 type JobQuery struct {
@@ -145,6 +148,9 @@ CREATE TABLE IF NOT EXISTS slurm_jobs (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE slurm_jobs ADD COLUMN IF NOT EXISTS account TEXT NOT NULL DEFAULT '';
+ALTER TABLE slurm_jobs ADD COLUMN IF NOT EXISTS elapsed_seconds BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE slurm_jobs ADD COLUMN IF NOT EXISTS cpu_time_seconds BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE slurm_jobs ADD COLUMN IF NOT EXISTS alloc_tres TEXT NOT NULL DEFAULT '';
 CREATE INDEX IF NOT EXISTS idx_slurm_jobs_synced_at ON slurm_jobs (synced_at DESC);
 CREATE INDEX IF NOT EXISTS idx_slurm_jobs_state ON slurm_jobs (state);
 CREATE INDEX IF NOT EXISTS idx_slurm_jobs_account ON slurm_jobs (account);
@@ -641,17 +647,20 @@ func (s *Services) syncSlurmJobsSince(ctx context.Context, historySince string) 
 		raw, _ := json.Marshal(job)
 		if err := s.upsertJob(ctx, SyncedJob{
 			ID: job.ID, Name: job.Name, User: job.User, Account: job.Account, Partition: job.Partition, State: job.State,
-			Nodes: job.Nodes, CPUs: job.CPUs, GPUs: "0", Time: job.Elapsed,
+			Nodes: job.Nodes, CPUs: job.CPUs, GPUs: job.GPUs, Time: job.Elapsed,
+			ElapsedSeconds: job.ElapsedSeconds, CPUTimeSeconds: job.CPUTimeSeconds, AllocTRES: job.AllocTRES,
 			Submit: job.Submit, NodeList: job.NodeList, Source: "slurmdbd",
 		}, string(raw), job.Start, job.End); err != nil {
 			return err
 		}
 	}
 	for _, job := range current {
+		elapsedSeconds := parseSlurmRuntimeSeconds(job.Time)
 		raw, _ := json.Marshal(job)
 		if err := s.upsertJob(ctx, SyncedJob{
 			ID: job.ID, Name: job.Name, User: job.User, Account: job.Account, Partition: job.Partition, State: job.State,
 			Nodes: job.Nodes, CPUs: job.CPUs, GPUs: job.GPUs, Time: job.Time,
+			ElapsedSeconds: elapsedSeconds, CPUTimeSeconds: elapsedSeconds * int64(atoiDefault(job.CPUs)),
 			Submit: job.Submit, NodeList: job.NodeList, Source: "squeue",
 		}, string(raw), "", ""); err != nil {
 			return err
@@ -678,10 +687,12 @@ func (s *Services) SyncCurrentSlurmJobs(ctx context.Context) error {
 		return err
 	}
 	for _, job := range current {
+		elapsedSeconds := parseSlurmRuntimeSeconds(job.Time)
 		raw, _ := json.Marshal(job)
 		if err := s.upsertJob(ctx, SyncedJob{
 			ID: job.ID, Name: job.Name, User: job.User, Account: job.Account, Partition: job.Partition, State: job.State,
 			Nodes: job.Nodes, CPUs: job.CPUs, GPUs: job.GPUs, Time: job.Time,
+			ElapsedSeconds: elapsedSeconds, CPUTimeSeconds: elapsedSeconds * int64(atoiDefault(job.CPUs)),
 			Submit: job.Submit, NodeList: job.NodeList, Source: "squeue",
 		}, string(raw), "", ""); err != nil {
 			return err
@@ -733,8 +744,8 @@ func (s *Services) upsertJob(ctx context.Context, job SyncedJob, raw, start, end
 	_, err := s.DB.ExecContext(ctx, `
 INSERT INTO slurm_jobs (
   job_id, name, user_name, account, partition, state, node_count, cpu_count, gpu_count,
-  runtime, node_list, submit_time, start_time, end_time, source, raw, synced_at, updated_at
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,now(),now())
+  runtime, elapsed_seconds, cpu_time_seconds, alloc_tres, node_list, submit_time, start_time, end_time, source, raw, synced_at, updated_at
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19::jsonb,now(),now())
 ON CONFLICT (job_id) DO UPDATE SET
   name = EXCLUDED.name,
   user_name = EXCLUDED.user_name,
@@ -745,6 +756,9 @@ ON CONFLICT (job_id) DO UPDATE SET
   cpu_count = EXCLUDED.cpu_count,
   gpu_count = EXCLUDED.gpu_count,
   runtime = EXCLUDED.runtime,
+  elapsed_seconds = EXCLUDED.elapsed_seconds,
+  cpu_time_seconds = EXCLUDED.cpu_time_seconds,
+  alloc_tres = CASE WHEN EXCLUDED.alloc_tres <> '' THEN EXCLUDED.alloc_tres ELSE slurm_jobs.alloc_tres END,
   node_list = EXCLUDED.node_list,
   submit_time = EXCLUDED.submit_time,
   start_time = EXCLUDED.start_time,
@@ -754,7 +768,7 @@ ON CONFLICT (job_id) DO UPDATE SET
   synced_at = now(),
   updated_at = now()
 `, job.ID, job.Name, job.User, job.Account, job.Partition, job.State, atoiDefault(job.Nodes), atoiDefault(job.CPUs), atoiDefault(job.GPUs),
-		job.Time, job.NodeList, job.Submit, start, end, job.Source, raw)
+		job.Time, job.ElapsedSeconds, job.CPUTimeSeconds, job.AllocTRES, job.NodeList, job.Submit, start, end, job.Source, raw)
 	return err
 }
 
@@ -966,6 +980,38 @@ func atoiDefault(value string) int {
 		return 0
 	}
 	return n
+}
+
+func parseSlurmRuntimeSeconds(value string) int64 {
+	value = strings.TrimSpace(value)
+	if value == "" || strings.EqualFold(value, "unknown") || strings.EqualFold(value, "unlimited") {
+		return 0
+	}
+	days := int64(0)
+	if parts := strings.SplitN(value, "-", 2); len(parts) == 2 {
+		days, _ = strconv.ParseInt(parts[0], 10, 64)
+		value = parts[1]
+	}
+	parts := strings.Split(value, ":")
+	values := make([]int64, len(parts))
+	for i, part := range parts {
+		parsed, err := strconv.ParseInt(part, 10, 64)
+		if err != nil || parsed < 0 {
+			return 0
+		}
+		values[i] = parsed
+	}
+	seconds := days * 24 * 60 * 60
+	switch len(values) {
+	case 3:
+		return seconds + values[0]*3600 + values[1]*60 + values[2]
+	case 2:
+		return seconds + values[0]*60 + values[1]
+	case 1:
+		return seconds + values[0]
+	default:
+		return 0
+	}
 }
 
 func (s *Services) Close() {
